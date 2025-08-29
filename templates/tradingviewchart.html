@@ -1,0 +1,1049 @@
+{% extends "base.html" %}
+
+{% block title %}Stock Preview - Enhanced{% endblock %}
+
+{% block head %}
+{{ super() }}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css">
+<style>
+/* ================== THEME VARIABLES ================== */
+:root {
+    --primary: #2962ff;
+    --secondary: #455a64;
+    --success: #2e7d32;
+    --warning: #f9a825;
+    --error: #c62828;
+    --light-bg: #f5f7fa;
+    --card-bg: #ffffff;
+    --text-primary: #212121;
+    --text-secondary: #757575;
+    --border-color: #e0e0e0;
+}
+.dark-mode {
+    --light-bg: #1e1e1e;
+    --card-bg: #2d2d2d;
+    --text-primary: #f5f5f5;
+    --text-secondary: #b0b0b0;
+    --border-color: #444;
+}
+body { background: var(--light-bg); color: var(--text-primary); font-family: Arial, sans-serif; transition: background-color 0.3s, color 0.3s; }
+.stock-preview-container { padding: 20px; min-height: calc(100vh - 150px); }
+.page-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 25px; }
+.page-title { font-size: 28px; font-weight: 600; margin: 0; }
+.controls-container { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px; align-items: center; }
+.search-box { position: relative; min-width: 250px; flex: 1; align-items: center;}
+.search-input { width: 100%; padding: 10px 15px 10px 40px; border: 1px solid var(--border-color); border-radius: 6px; background-color: var(--card-bg); color: var(--text-primary); transition: border-color 0.3s; }
+.search-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(41, 98, 255, 0.2); }
+.search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); }
+.filter-select { padding: 10px 15px; border: 1px solid var(--border-color); border-radius: 6px; background-color: var(--card-bg); color: var(--text-primary); cursor: pointer; min-width: 150px;  height: 42px; /* Fixed height to match search input */
+    box-sizing: border-box; /* Ensure padding is included in height */}
+.view-toggle { display: flex; border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden;height: 42px; }
+.view-btn { padding: 9px 15px; background: var(--card-bg); border: none; cursor: pointer; color: var(--text-secondary); transition: all 0.2s;display: flex;
+    align-items: center; /* Center icon vertically */
+    justify-content: center; }
+.view-btn:hover { background: rgba(41, 98, 255, 0.1); }
+.view-btn.active { background: var(--primary); color: white; }
+.card-view { display: grid; gap: 20px; transition: all 0.3s; }
+.stock-card { background: var(--card-bg); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); overflow: hidden; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.stock-card:hover { transform: translateY(-5px); box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
+.card-header { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid var(--border-color); }
+.stock-name { font-weight: 600; font-size: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 70%; }
+.card-actions { display: flex; gap: 10px; }
+.action-btn { background: none; border: none; cursor: pointer; color: var(--text-secondary); font-size: 16px; padding: 5px; border-radius: 4px; transition: all 0.2s; }
+.action-btn:hover { color: var(--primary); background: rgba(41, 98, 255, 0.1); }
+.action-btn.favorited { color: var(--warning); }
+.card-body { padding: 15px; position: relative; }
+.chart-container { height: 450px; width: 100%; position: relative; }
+.ohlc-info { position: absolute; top: 10px; right: 40%;transform: translateX(50%); background: rgba(255,255,255,0.9); padding: 6px 10px; border-radius: 6px; font-size: 12px; color: var(--text-primary); z-index: 20; pointer-events: none; transition: opacity 0.3s; }
+.dark-mode .ohlc-info { background: rgba(45,45,45,0.9); }
+.pagination-container { 
+        display: flex; 
+        justify-content: center; 
+        align-items: center;
+        margin-top: 30px; 
+        gap: 10px; 
+        flex-wrap: wrap; 
+    }
+    .pagination-btn { 
+        padding: 8px 15px; 
+        background: var(--card-bg); 
+        border: 1px solid var(--border-color); 
+        border-radius: 6px; 
+        color: var(--text-primary); 
+        cursor: pointer; 
+        transition: all 0.2s ease; 
+    }
+    .pagination-btn:hover:not(:disabled) { 
+        background: var(--primary); 
+        color: white; 
+        border-color: var(--primary); 
+    }
+    .pagination-btn.active { 
+        background: var(--primary); 
+        color: white; 
+        border-color: var(--primary); 
+    }
+    .pagination-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    .pagination-info { 
+        display: flex; 
+        align-items: center; 
+        color: var(--text-secondary); 
+        font-size: 14px; 
+        margin: 0 10px;
+    }
+    .table-view { 
+        width: 100%; 
+        border-collapse: collapse; 
+        background: var(--card-bg); 
+        border-radius: 8px; 
+        overflow: hidden; 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05); 
+    }
+    .table-view th { 
+        background-color: var(--primary); 
+        color: white; 
+        text-align: left; 
+        padding: 12px 15px; 
+        position: sticky;
+        top: 0;
+    }
+    .table-view td { 
+        padding: 12px 15px; 
+        border-bottom: 1px solid var(--border-color); 
+        color: var(--text-primary); 
+    }
+    .table-view tr:hover { 
+        background-color: rgba(41,98,255,0.05); 
+    }
+    
+    /* Sortable Header Styles */
+.table-view th.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s, color 0.2s;
+    white-space: nowrap;
+}
+.table-view th.sortable:hover {
+    background: rgba(41, 98, 255, 0.15);
+}
+.table-view .sort-icon {
+    margin-left: 6px;
+    font-size: 12px;
+    opacity: 0.7;
+    transition: transform 0.2s;
+}
+.table-view th.sortable.asc .sort-icon {
+    transform: rotate(180deg);
+    opacity: 1;
+}
+.table-view th.sortable.desc .sort-icon {
+    opacity: 1;
+}
+
+
+    .theme-toggle { 
+        background: none; 
+        border: none; 
+        cursor: pointer; 
+        color: var(--text-secondary); 
+        font-size: 20px; 
+        padding: 8px;
+        border-radius: 50%;
+        transition: all 0.3s;
+    }
+    .theme-toggle:hover {
+        background: rgba(41, 98, 255, 0.1);
+        color: var(--primary);
+    }
+    
+    /* Loading and error states */
+    .loading-indicator {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: var(--text-secondary);
+    }
+    .loading-spinner {
+        width: 30px;
+        height: 30px;
+        border: 3px solid rgba(41, 98, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: var(--primary);
+        animation: spin 1s ease-in-out infinite;
+        margin-bottom: 10px;
+    }
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    .error-message {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        color: var(--error);
+        gap: 8px;
+    }
+    
+    /* Custom select styling */
+    .choices__inner {
+        background-color: var(--card-bg) !important;
+        border-color: var(--border-color) !important;
+        color: var(--text-primary) !important;
+        min-height: 42px !important;
+        border-radius: 6px !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+    .choices__input {
+        background-color: var(--card-bg) !important;
+        color: var(--text-primary) !important;
+    }
+    .choices__list--dropdown {
+        background-color: var(--card-bg) !important;
+        border-color: var(--border-color) !important;
+    }
+    .choices__item {
+        color: var(--text-primary) !important;
+    }
+    .choices__item--selectable {
+        color: var(--text-primary) !important;
+    }
+    .choices__list--dropdown .choices__item--selectable.is-highlighted {
+        background-color: var(--primary) !important;
+        color: white !important;
+    }
+    .choices[data-type*="select-multiple"] .choices__button,
+    .choices[data-type*="select-one"] .choices__button {
+        border-color: var(--text-secondary) !important;
+    }
+    /* FIX: Selected items in multi-select filter */
+    .choices__list--multiple .choices__item {
+        background-color: var(--primary) !important;
+        border-color: var(--primary) !important;
+        color: white !important;
+        font-weight: 500;
+    }
+    .choices__list--single {
+    display: flex !important;
+    align-items: center !important;
+    height: 100% !important;
+}
+    .choices__list--multiple .choices__item .choices__button {
+        border-color: white !important;
+        filter: brightness(0) invert(1);
+    }
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .card-view {
+            grid-template-columns: 1fr;
+        }
+        .controls-container {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .search-box {
+            min-width: auto;
+        }
+        .filter-select {
+            width: 100%;
+        }
+        .view-toggle {
+            align-self: center;
+        }
+        .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .table-view {
+            display: block;
+            overflow-x: auto;
+        }
+    }
+    
+    /* Favorites badge */
+    .favorites-badge {
+        position: fixed;
+        top: 100px;
+        right: 20px;
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 10px 15px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        z-index: 100;
+        cursor: pointer;
+    }
+    .favorites-badge:hover {
+        background: rgba(41, 98, 255, 0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="stock-preview-container">
+    <div class="page-header">
+        <h1 class="page-title">Stock Preview</h1>
+        <button class="theme-toggle" id="themeToggle"><i class="fas fa-moon"></i></button>
+    </div>
+
+    <div class="controls-container">
+        <div class="search-box">
+            <i class="fas fa-search search-icon"></i>
+            <input type="text" class="search-input" id="stockSearch" placeholder="Search stocks...">
+        </div>
+        
+        <select class="filter-select" id="setupFilter" multiple>
+            <option value="">All Setups</option>
+        </select>
+       <select class="filter-select layout-select" id="layoutSelector">
+            <option value="1">1 per row</option>
+            <option value="2" selected>2 per row</option>
+            <option value="3">3 per row</option>
+            <option value="4">4 per row</option>
+        </select>
+
+         <!-- 🔥 CHANGE START: EMA Cross Filter -->
+        <label style="display:flex;align-items:center;gap:6px;">
+            <input type="checkbox" id="emaCrossFilter"> EMA 10/20 Cross Today
+        </label>
+        <!-- 🔥 CHANGE END -->
+        <div class="view-toggle">
+            <button class="view-btn active" data-view="card"><i class="fas fa-th-large"></i></button>
+            <button class="view-btn" data-view="table"><i class="fas fa-table"></i></button>
+        </div>
+    </div>
+
+    <div id="stockPreviewContainer" class="card-view"></div>
+    <div id="tableContainer" style="display:none;">
+       <table class="table-view">
+    <thead>
+    <tr>
+        <th>Symbol</th>
+        <th>Name</th>
+        <th>Price</th>
+        <th id="changeHeader" class="sortable">
+            Change
+            <span class="sort-icon"><i class="fas fa-sort"></i></span>
+        </th>
+        <th>Volume</th>
+        <th>Actions</th>
+    </tr>
+</thead>
+
+    <tbody id="stockTableBody"></tbody>
+</table>
+
+    </div>
+
+    <div class="pagination-container">
+        <button class="pagination-btn" id="prevPage" disabled>Previous</button>
+        <div id="pagination"></div>
+        <button class="pagination-btn" id="nextPage" disabled>Next</button>
+        <div class="pagination-info">Showing <span id="itemsShown">0</span> of <span id="totalItems">0</span> stocks</div>
+    </div>
+    
+    <div class="favorites-badge" id="favoritesBadge" style="display: none;">
+        <i class="fas fa-star"></i> <span id="favoritesCount">0</span> Favorites
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="https://unpkg.com/lightweight-charts@5.0.8/dist/lightweight-charts.standalone.production.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+<script>
+const stocks = {{ stocks | tojson }};
+const pageSize = 100;
+let currentPage = 1;
+let currentView = 'card';
+let filteredStocks = [...stocks];
+let chartInstances = [];
+let favorites = JSON.parse(localStorage.getItem('stockFavorites')) || {};
+let setupFilterChoices; // Store Choices.js instance
+
+// Adjustable layout
+const layoutSelector = document.getElementById('layoutSelector');
+function updateCardLayout(columns) {
+    const container = document.getElementById('stockPreviewContainer');
+    container.style.gridTemplateColumns = `repeat(${columns}, 1fr)`;
+}
+layoutSelector.value = localStorage.getItem('chartsPerRow') || '2';
+updateCardLayout(parseInt(layoutSelector.value));
+layoutSelector.addEventListener('change', () => {
+    const cols = parseInt(layoutSelector.value);
+    updateCardLayout(cols);
+    localStorage.setItem('chartsPerRow', cols);
+});
+
+// Initialize favorites badge
+function updateFavoritesBadge() {
+    const count = Object.keys(favorites).filter(key => favorites[key]).length;
+    const badge = document.getElementById('favoritesBadge');
+    document.getElementById('favoritesCount').textContent = count;
+    
+    if (count > 0) {
+        badge.style.display = 'block';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+// EMA calculation
+function calculateEMA(data, period) {
+    if (!data.length) return [];
+    const k = 2 / (period + 1);
+    let ema = [];
+    data.forEach((bar, i) => {
+        if (i === 0) ema.push({ time: bar.time, value: bar.close });
+        else {
+            const prev = ema[i-1].value;
+            ema.push({ time: bar.time, value: bar.close*k + prev*(1-k) });
+        }
+    });
+    return ema;
+}
+
+// 🔥 CHANGE START: Detect EMA Cross with logging
+// 🔥 NEW FUNCTION: Detect EMA Conditions with 4% Buffer
+// 🔥 ENHANCED: Detect EMA Cross with full logging
+function detectEmaCrossToday(data) {
+    console.log("detectEmaCrossToday triggered for stock data length:", data?.length);
+    if (!data || data.length < 3) {
+        console.log("❌ Not enough data to evaluate EMA cross");
+        return false;
+    }
+
+    // Helper to round numbers
+    const round = num => Math.round(num);
+
+    // Compute EMA arrays and round the values
+    const ema10 = calculateEMA(data, 10).map(e => round(e.value));
+    const ema20 = calculateEMA(data, 20).map(e => round(e.value));
+    const ema50 = calculateEMA(data, 50).map(e => round(e.value));
+
+    const last = data.length - 1;
+    const prev = last - 1;
+    const latest = data[last];
+    const previous = data[prev];
+    //console.log("Latest volume:", latest["volume"]);
+    const cond_volume = latest["volume"] > 70000;
+
+    // Conditions
+    const cond_low_open_buffer = latest.low > latest.open * 0.96;
+    const cond_uptrend = ema20[last] > ema50[last];
+    const cond_ema20_up = latest.close > ema20[last] * 1.01 && previous.close <= ema20[prev] * 1.01;
+    const cond_ema20_down = latest.close > ema20[last] * 0.99 && previous.close <= ema20[prev] * 0.99;
+    const cond_ema10_up = latest.close > ema10[last] * 1.01 && previous.close <= ema10[prev] * 1.01;
+    const cond_ema10_down = latest.close > ema10[last] * 0.99 && previous.close <= ema10[prev] * 0.99;
+    const cond_low_below_ema =
+        ((latest.low <=  ema10[last] && latest.close >=  ema10[last]* 0.995) ||
+         (latest.low <=  ema20[last] && latest.close >=  ema20[last]* 0.995));
+    const cond_ema_combined = cond_ema20_up || cond_ema20_down || cond_ema10_up || cond_ema10_down;
+
+    const overall = cond_low_open_buffer && cond_uptrend && cond_low_below_ema && cond_volume ;
+    //const overall = cond_low_open_buffer && cond_uptrend && cond_low_below_ema && cond_ema_combined;
+
+    // 🔍 Detailed Logs
+    console.log({
+        close: latest.close, open: latest.open, low: latest.low,
+        ema10_last: ema10[last], ema10_prev: ema10[prev],
+        ema20_last: ema20[last], ema20_prev: ema20[prev],
+        ema50_last: ema50[last], ema50_prev: ema50[prev],
+        volume_lat: latest["volume"],
+        cond_low_open_buffer, cond_uptrend, cond_ema20_up, cond_ema20_down,
+        cond_ema10_up, cond_ema10_down, cond_low_below_ema, cond_ema_combined,cond_volume, overall
+    });
+
+    return overall;
+}
+
+// 🔥 CHANGE END
+
+let sortDirection = 'desc';
+
+document.getElementById('changeHeader').addEventListener('click', () => {
+    sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+
+    filteredStocks.sort((a, b) => {
+        const changeA = parseFloat(a.change || 0);
+        const changeB = parseFloat(b.change || 0);
+        return sortDirection === 'asc' ? changeA - changeB : changeB - changeA;
+    });
+
+    renderStocks();
+    updateSortIcon();
+});
+
+function updateSortIcon() {
+    const header = document.getElementById('changeHeader');
+    const icon = header.querySelector('.sort-icon i');
+    header.classList.remove('asc', 'desc');
+
+    if (sortDirection === 'asc') {
+        header.classList.add('asc');
+        icon.className = 'fas fa-sort-up';
+    } else {
+        header.classList.add('desc');
+        icon.className = 'fas fa-sort-down';
+    }
+}
+
+
+// Dynamically populate setup filter using Choices.js
+function initializeSetupFilter() {
+    const setupFilter = document.getElementById('setupFilter');
+    const uniqueSetups = [...new Set(stocks.map(stock => stock.setup_case))].filter(Boolean);
+    
+    // Add options to the select element
+    uniqueSetups.forEach(setup => {
+        const option = document.createElement('option');
+        option.value = setup;
+        option.textContent = setup;
+        setupFilter.appendChild(option);
+    });
+    
+    // Initialize Choices.js
+    setupFilterChoices = new Choices(setupFilter, {
+        removeItemButton: true,
+        searchEnabled: true,
+        placeholder: true,
+        placeholderValue: 'Filter by setup',
+        searchPlaceholderValue: 'Search setups',
+        shouldSort: false,
+        itemSelectText: '',
+        maxItemCount: 5,
+        renderSelectedChoices: 'always'
+    });
+    
+    // Add event listener for changes
+    setupFilter.addEventListener('change', filterStocks);
+    setupFilter.addEventListener('removeItem', filterStocks);
+    setupFilter.addEventListener('addItem', filterStocks);
+}
+
+// Pagination
+function renderPagination(totalPages) {
+    const paginationDiv = document.getElementById('pagination');
+    paginationDiv.innerHTML = '';
+    
+    if (totalPages <= 0) {
+        document.getElementById('prevPage').disabled = true;
+        document.getElementById('nextPage').disabled = true;
+        return;
+    }
+    
+    const startPage = Math.max(1, currentPage - 2);
+    const endPage = Math.min(totalPages, startPage + 4);
+    
+    for (let i = startPage; i <= endPage; i++) {
+        const btn = document.createElement('button');
+        btn.className = 'pagination-btn';
+        if (i === currentPage) btn.classList.add('active');
+        btn.innerText = i;
+        btn.addEventListener('click', () => {
+            currentPage = i;
+            renderStocks();
+        });
+        paginationDiv.appendChild(btn);
+    }
+    
+    const startItem = (currentPage - 1) * pageSize + 1;
+    const endItem = Math.min(currentPage * pageSize, filteredStocks.length);
+    document.getElementById('itemsShown').textContent = `${startItem}-${endItem}`;
+    document.getElementById('totalItems').textContent = filteredStocks.length;
+    
+    document.getElementById('prevPage').disabled = currentPage === 1;
+    document.getElementById('nextPage').disabled = currentPage === totalPages;
+}
+
+function filterStocks() {
+    const searchText = document.getElementById('stockSearch').value.toLowerCase();
+    const emaFilterChecked = document.getElementById('emaCrossFilter').checked;
+
+    const selectedSetups = setupFilterChoices.getValue(true);
+    console.log("Selected setups:", selectedSetups);
+    
+
+    const hasSetupSelection = selectedSetups.length > 0 && !(selectedSetups.length === 1 && selectedSetups[0] === "");
+    console.log("Has setup selection:", hasSetupSelection);
+
+    filteredStocks = stocks.filter(stock => {
+        const chartData = stock.rawData; // move it here
+        const matchesSearch = stock.stock_name.toLowerCase().includes(searchText) ||
+                              stock.instrument_id.toString().includes(searchText);
+
+        const matchesSetup = !hasSetupSelection || 
+                             selectedSetups.some(s => s.toLowerCase() === stock.setup_case?.toLowerCase());
+
+        let matchesEma = true;
+        if (emaFilterChecked) {
+            
+
+             matchesEma = chartData && detectEmaCrossToday(chartData);
+             console.log(`Stock ${stock.stock_name} EMA cross match:`, matchesEma);
+        }
+
+        return matchesSearch && matchesSetup && matchesEma;
+    });
+
+    console.log(`Filtered stocks count: ${filteredStocks.length} / ${stocks.length}`);
+    currentPage = 1;
+    renderStocks();
+}
+
+// Cleanup charts
+function cleanupCharts() {
+    chartInstances.forEach(chart => {
+        if (chart && chart.remove) {
+            chart.remove();
+        }
+    });
+    chartInstances = [];
+}
+
+// Render stocks
+async function renderStocks() {
+    cleanupCharts();
+    const container = document.getElementById('stockPreviewContainer');
+    const tableBody = document.getElementById('stockTableBody');
+    
+    if (currentView === 'card') {
+        document.getElementById('tableContainer').style.display = 'none';
+        container.style.display = 'grid';
+    } else {
+        container.style.display = 'none';
+        document.getElementById('tableContainer').style.display = 'block';
+        tableBody.innerHTML = '';
+    }
+
+    const start = (currentPage - 1) * pageSize;
+    const end = start + pageSize;
+    const pageStocks = filteredStocks.slice(start, end);
+
+    if (pageStocks.length === 0) {
+        if (currentView === 'card') {
+            container.innerHTML = '<div class="error-message"><i class="fas fa-exclamation-circle"></i> No stocks match your search criteria</div>';
+        } else {
+            tableBody.innerHTML = '<tr><td colspan="6" class="error-message"><i class="fas fa-exclamation-circle"></i> No stocks match your search criteria</td></tr>';
+        }
+        renderPagination(0);
+        return;
+    }
+
+    if (currentView === 'card') {
+        container.innerHTML = '';
+        
+        for (let stock of pageStocks) {
+            const isFavorite = favorites[stock.instrument_id] || false;
+            const card = document.createElement('div');
+            card.className = 'stock-card';
+            card.innerHTML = `
+                <div class="card-header">
+                    <div class="stock-name" title="${stock.stock_name}">${stock.stock_name}</div>
+                    <div class="card-actions">
+                        <button class="action-btn favorite-btn ${isFavorite ? 'favorited' : ''}" 
+                                data-id="${stock.instrument_id}" title="${isFavorite ? 'Remove from favorites' : 'Add to favorites'}">
+                            <i class="${isFavorite ? 'fas' : 'far'} fa-star"></i>
+                        </button>
+                        <button class="action-btn expand-btn" title="Expand view"><i class="fas fa-expand"></i></button>
+                        <button class="action-btn copy-btn" title="Copy chart"><i class="fas fa-copy"></i></button>
+                        <button class="action-btn volume-toggle-btn" title="Toggle Volume"><i class="fas fa-chart-bar"></i></button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="ohlc-info">Hover over chart</div>
+                    <div class="chart-container">
+                        <div class="loading-indicator">
+                            <div class="loading-spinner"></div>
+                            <span>Loading chart...</span>
+                        </div>
+                    </div>
+                </div>`;
+            container.appendChild(card);
+            loadChartData(stock, card);
+        }
+    } else {
+        tableBody.innerHTML = '';
+        for (let stock of pageStocks) {
+            const isFavorite = favorites[stock.instrument_id] || false;
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${stock.instrument_id}</td>
+                <td title="${stock.stock_name}">${stock.stock_name}</td>
+                <td>Loading...</td>
+                <td>Loading...</td>
+                <td>Loading...</td>
+                <td>
+                    <button class="action-btn" title="View details"><i class="fas fa-chart-line"></i></button>
+                    <button class="action-btn favorite-btn ${isFavorite ? 'favorited' : ''}" 
+                            data-id="${stock.instrument_id}" title="${isFavorite ? 'Remove from favorites' : 'Add to favorites'}">
+                        <i class="${isFavorite ? 'fas' : 'far'} fa-star"></i>
+                    </button>
+                </td>`;
+            tableBody.appendChild(row);
+            loadTableData(stock, row);
+        }
+    }
+
+    // Add event listeners to favorite buttons
+    document.querySelectorAll('.favorite-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const stockId = this.dataset.id;
+            favorites[stockId] = !favorites[stockId];
+            localStorage.setItem('stockFavorites', JSON.stringify(favorites));
+            
+            if (favorites[stockId]) {
+                this.classList.add('favorited');
+                this.querySelector('i').classList.replace('far', 'fas');
+                this.title = 'Remove from favorites';
+            } else {
+                this.classList.remove('favorited');
+                this.querySelector('i').classList.replace('fas', 'far');
+                this.title = 'Add to favorites';
+            }
+            
+            updateFavoritesBadge();
+        });
+    });
+
+    renderPagination(Math.ceil(filteredStocks.length / pageSize));
+}
+
+// Load chart data
+async function loadChartData(stock, card) {
+    try {
+        const response = await fetch(`/tradingview/api/stock_data?instrument_id=${stock.instrument_id}`);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        
+        const rawData = await response.json();
+        if (!rawData || rawData.length === 0) throw new Error('No data available');
+        // 🔥 STORE DATA FOR LATER USE
+        stock.rawData = rawData;
+        // Log the length of rawData
+console.log(`Stock ${stock.stock_name} rawData length:`, rawData.length);
+        const chartContainer = card.querySelector('.chart-container');
+        chartContainer.innerHTML = '';
+        
+        const chart = LightweightCharts.createChart(chartContainer, {
+            width: chartContainer.clientWidth,
+            height: chartContainer.clientHeight,
+            layout: {
+                backgroundColor: 'transparent',
+                textColor: getComputedStyle(document.documentElement).getPropertyValue('--text-primary')
+            },
+            grid: {
+                vertLines: { color: 'rgba(0,0,0,0.05)' },
+                horzLines: { color: 'rgba(0,0,0,0.05)' }
+            },
+            timeScale: {
+                timeVisible: false,
+                secondsVisible: false,
+                borderColor: 'rgba(0,0,0,0.1)',
+                rightOffset: 10
+            },
+            crosshair: { mode: LightweightCharts.CrosshairMode.Normal }
+        });
+        
+        chartInstances.push(chart);
+
+        const candleSeries = chart.addSeries(LightweightCharts.CandlestickSeries, {
+            upColor: '#26a69a',
+            downColor: '#ef5350',
+            borderUpColor: '#26a69a',
+            borderDownColor: '#ef5350',
+            wickUpColor: '#26a69a',
+            wickDownColor: '#ef5350'
+        });
+
+        // Add EMA indicators
+        const ema10 = chart.addSeries(LightweightCharts.LineSeries, { color: '#2962ff', lineWidth: 1 });
+        const ema20 = chart.addSeries(LightweightCharts.LineSeries, { color: '#ff6d00', lineWidth: 1 });
+        const ema50 = chart.addSeries(LightweightCharts.LineSeries, { color: '#aa00ff', lineWidth: 1 });
+         const ema200=chart.addSeries(LightweightCharts.LineSeries,{color:'red',lineWidth:1});
+
+        const volumeSeries = chart.addSeries(LightweightCharts.HistogramSeries, {
+            color: '#26a69a',
+            priceFormat: { type: 'volume' },
+            priceScaleId: '',
+            scaleMargins: { top: 0.85, bottom: 0 },
+            visible: false
+        });
+
+        candleSeries.setData(rawData);
+        ema10.setData(calculateEMA(rawData, 10));
+        ema20.setData(calculateEMA(rawData, 20));
+        ema50.setData(calculateEMA(rawData, 50));
+        ema200.setData(calculateEMA(rawData, 200));
+        // 🔥 Detect EMA cross
+//const crossDetected = detectEmaCrossToday(rawData);
+//console.log('EMA cross detected for', stock.instrument_id, ':', crossDetected);
+        
+        const volumes = rawData.map(d => d.volume);
+        const avgVolume = volumes.reduce((a, b) => a + b, 0) / volumes.length;
+        const cap = avgVolume * 10;
+        
+        volumeSeries.setData(rawData.map(d => {
+            const vol = Math.min(d.volume, cap);
+            return { 
+                time: d.time, 
+                value: vol, 
+                color: d.close >= d.open ? '#26a69a' : '#ef5350' 
+            };
+        }));
+
+        // Volume toggle button
+        const volumeToggleBtn = card.querySelector('.volume-toggle-btn');
+        let volumeVisible = false;
+        volumeToggleBtn.addEventListener('click', () => {
+            volumeVisible = !volumeVisible;
+            volumeSeries.applyOptions({ visible: volumeVisible });
+            volumeToggleBtn.style.color = volumeVisible ? 'var(--primary)' : 'var(--text-secondary)';
+        });
+
+        const volumeMap = {};
+        rawData.forEach(d => {
+            volumeMap[d.time] = d.volume;
+        });
+
+        // OHLC info display
+        const ohlcInfo = card.querySelector('.ohlc-info');
+        chart.subscribeCrosshairMove(param => {
+            if (!param || !param.time) {
+                ohlcInfo.innerText = 'Hover over chart';
+                return;
+            }
+            
+            const candle = param.seriesData.get(candleSeries);
+            if (candle) {
+                const vol = volumeMap[candle.time] || 0;
+                const volumeK = (vol / 1000).toFixed(1);
+                ohlcInfo.innerHTML = `
+                    O: ${candle.open.toFixed(2)} | 
+                    H: ${candle.high.toFixed(2)} | 
+                    L: ${candle.low.toFixed(2)} | 
+                    C: ${candle.close.toFixed(2)}| 
+                    V: ${volumeK}k
+                `;
+            } else {
+                ohlcInfo.innerText = 'Hover over chart';
+            }
+        });
+
+        // Responsive chart
+        const resizeObserver = new ResizeObserver(entries => {
+            if (entries.length > 0) {
+                const { width, height } = entries[0].contentRect;
+                chart.applyOptions({ width, height });
+            }
+        });
+        resizeObserver.observe(chartContainer);
+
+        // Copy chart to clipboard
+        const copyBtn = card.querySelector('.copy-btn');
+        copyBtn.addEventListener('click', async () => {
+            try {
+                const chartDiv = card.querySelector('.chart-container');
+                
+                // Add stock name overlay temporarily
+                const nameOverlay = document.createElement('div');
+                nameOverlay.innerText = stock.stock_name;
+                nameOverlay.style.position = 'absolute';
+                nameOverlay.style.top = '10px';
+                nameOverlay.style.left = '10px';
+                nameOverlay.style.background = 'rgba(255,255,255,0.9)';
+                nameOverlay.style.padding = '4px 8px';
+                nameOverlay.style.borderRadius = '4px';
+                nameOverlay.style.fontSize = '14px';
+                nameOverlay.style.fontWeight = 'bold';
+                nameOverlay.style.zIndex = '1000';
+                chartDiv.appendChild(nameOverlay);
+
+                const canvas = await html2canvas(chartDiv, { backgroundColor: null });
+                chartDiv.removeChild(nameOverlay);
+
+                canvas.toBlob(async (blob) => {
+                    if (!blob) throw new Error('Failed to convert chart to blob');
+
+                    try {
+                        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+                        alert('Chart copied to clipboard!');
+                    } catch {
+                        const link = document.createElement('a');
+                        link.href = URL.createObjectURL(blob);
+                        link.download = `${stock.stock_name}_chart.png`;
+                        link.click();
+                        URL.revokeObjectURL(link.href);
+                        alert('Clipboard copy failed. Chart downloaded instead.');
+                    }
+                });
+            } catch (err) {
+                console.error('Failed to copy chart:', err);
+                alert('Failed to copy chart.');
+            }
+        });
+
+        // Expand view button
+        const expandBtn = card.querySelector('.expand-btn');
+        let originalHeight = card.querySelector('.chart-container').clientHeight; // store initial height
+
+        expandBtn.addEventListener('click', () => {
+            const chartContainer = card.querySelector('.chart-container');
+
+            if (!card.classList.contains('expanded')) {
+                // Store original height before expanding
+                originalHeight = chartContainer.clientHeight;
+
+                card.classList.add('expanded');
+                card.style.position = 'fixed';
+                card.style.top = '50px';
+                card.style.left = '50px';
+                card.style.right = '50px';
+                card.style.bottom = '50px';
+                card.style.zIndex = '1000';
+                card.style.width = 'auto';
+                chartContainer.style.height = 'calc(100% - 60px)';
+                expandBtn.innerHTML = '<i class="fas fa-compress"></i>';
+                expandBtn.title = 'Minimize view';
+            } else {
+                card.classList.remove('expanded');
+                card.style.position = '';
+                card.style.top = '';
+                card.style.left = '';
+                card.style.right = '';
+                card.style.bottom = '';
+                card.style.zIndex = '';
+                card.style.width = '';
+                chartContainer.style.height = originalHeight + 'px'; // restore original height
+                expandBtn.innerHTML = '<i class="fas fa-expand"></i>';
+                expandBtn.title = 'Expand view';
+            }
+
+            // Resize chart
+            chart.applyOptions({
+                width: chartContainer.clientWidth,
+                height: chartContainer.clientHeight
+            });
+        });
+
+    } catch (err) {
+        console.error('Failed to load chart data:', err);
+        const chartContainer = card.querySelector('.chart-container');
+        chartContainer.innerHTML = '<div class="error-message"><i class="fas fa-exclamation-triangle"></i> Failed to load chart data</div>';
+    }
+}
+
+// Load table data
+async function loadTableData(stock, row) {
+    try {
+        const response = await fetch(`/tradingview/api/stock_data?instrument_id=${stock.instrument_id}`);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        
+        const rawData = await response.json();
+        if (!rawData || rawData.length === 0) throw new Error('No data available');
+        
+        const latestData = rawData[rawData.length - 1];
+        const prevClose = rawData[rawData.length - 2] ? rawData[rawData.length - 2].close : latestData.open;
+        const change = ((latestData.close - prevClose) / prevClose * 100).toFixed(2);
+        
+        row.cells[2].textContent = latestData.close.toFixed(2);
+        row.cells[3].textContent = `${change}%`;
+        row.cells[3].style.color = change >= 0 ? 'var(--success)' : 'var(--error)';
+        row.cells[4].textContent = latestData.volume.toLocaleString();
+        
+    } catch (err) {
+        console.error('Failed to load table data:', err);
+        row.cells[2].textContent = 'N/A';
+        row.cells[3].textContent = 'N/A';
+        row.cells[4].textContent = 'N/A';
+    }
+}
+
+// Event listeners
+document.getElementById('stockSearch').addEventListener('input', debounce(filterStocks, 300));
+// EMA Cross filter
+document.getElementById('emaCrossFilter').addEventListener('change', filterStocks);
+
+document.querySelectorAll('.view-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentView = btn.dataset.view;
+        renderStocks();
+    });
+});
+
+document.getElementById('prevPage').addEventListener('click', () => {
+    if (currentPage > 1) {
+        currentPage--;
+        renderStocks();
+    }
+});
+
+document.getElementById('nextPage').addEventListener('click', () => {
+    if (currentPage < Math.ceil(filteredStocks.length / pageSize)) {
+        currentPage++;
+        renderStocks();
+    }
+});
+
+// Theme toggle
+document.getElementById('themeToggle').addEventListener('click', () => {
+    document.body.classList.toggle('dark-mode');
+    const icon = document.getElementById('themeToggle').querySelector('i');
+    icon.classList.toggle('fa-moon');
+    icon.classList.toggle('fa-sun');
+    
+    // Save theme preference
+    localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+    
+    // Re-render charts with new theme
+    renderStocks();
+});
+
+// Favorites badge click
+document.getElementById('favoritesBadge').addEventListener('click', () => {
+    // Filter to show only favorites
+    const favoriteIds = Object.keys(favorites).filter(key => favorites[key]);
+    filteredStocks = stocks.filter(stock => favoriteIds.includes(stock.instrument_id));
+    currentPage = 1;
+    renderStocks();
+});
+
+// Debounce function for search
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Initialize
+function init() {
+    // Load saved theme
+    if (localStorage.getItem('darkMode') === 'true') {
+        document.body.classList.add('dark-mode');
+        const icon = document.getElementById('themeToggle').querySelector('i');
+        icon.classList.replace('fa-moon', 'fa-sun');
+    }
+    
+    initializeSetupFilter(); // Initialize the enhanced setup filter
+    updateFavoritesBadge();
+    filterStocks(); // Initial render
+}
+
+init();
+</script>
+{% endblock %}

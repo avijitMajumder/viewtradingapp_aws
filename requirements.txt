@@ -1,0 +1,26 @@
+# Core Framework
+Flask==2.3.3
+Werkzeug==2.3.7
+Jinja2==3.1.2
+
+# Data Processing & Analysis
+pandas==2.0.3
+numpy==1.25.2
+
+# AWS Services
+boto3==1.28.62
+botocore==1.31.62
+
+# Environment Management
+python-dotenv==1.0.0
+
+# Utilities
+requests==2.31.0
+python-dateutil==2.8.2
+pytz==2023.3
+
+# Optional: Dhan SDK (for live trading data)
+dhanhq==2.1.0 # Uncomment if you have this package
+
+# Development & Testing (optional)
+gunicorn==21.2.0  # For production deployment
