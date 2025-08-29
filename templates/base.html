@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}Trading Dashboard{% endblock %}</title>
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Favicon & Custom Styles -->
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+<!-- 🌐 Navigation Bar -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark px-4">
+  <a class="navbar-brand" href="/">📊 TradeApp</a>
+  <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+  <div class="collapse navbar-collapse" id="navbarNav">
+    <ul class="navbar-nav me-auto">
+      <li class="nav-item"><a class="nav-link" href="/">Dashboard</a></li>
+     
+      <li class="nav-item dropdown">
+  <a class="nav-link dropdown-toggle" href="#" id="uploadDropdown" role="button" data-bs-toggle="dropdown">
+    Upload CSV
+  </a>
+  <ul class="dropdown-menu">
+    <li><a class="dropdown-item" href="/upload">📄 Upload CSV RS file</a></li>
+    <li><a class="dropdown-item" href="/upload_cts_result">📈 Result Upload</a></li>
+    <li><a class="dropdown-item" href="/marktsmithdashboard">📈 marktsmith dashboard </a></li>
+    
+  </ul>
+</li>
+
+      
+      <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle" href="#" id="scannerDropdown" role="button" data-bs-toggle="dropdown">Scanner</a>
+        <ul class="dropdown-menu">
+          <li><a class="dropdown-item" href="/scanner">Scanner</a></li>
+          <li><a class="dropdown-item" href="/Livescanner">Live Scanner</a></li>
+          <li><a class="dropdown-item" href="/1hour-bollinger-breakout">1H BB Breakout</a></li>
+          <li><a class="dropdown-item" href="/insidebar-breakout">15min Insidebar Breakout</a></li>
+          <li><a class="dropdown-item" href="/ipo_dashboard">IPO Dashboard</a></li>
+          <li><a class="dropdown-item" href="/strongquarterly">strong quarterly alert</a></li>
+        </ul>
+      </li>
+      <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle" href="#" id="marketDropdown" role="button" data-bs-toggle="dropdown">Market</a>
+        <ul class="dropdown-menu">
+          <li><a class="dropdown-item" href="/sectoroverview">Sector Overview</a></li>
+          <li><a class="dropdown-item" href="/top_movers">Top Movers</a></li>
+          <li><a class="dropdown-item" href="/rs">RS Market Watch</a></li>
+          <li><a class="dropdown-item" href="/momentum_watchlist">momentum Stock watchlist</a></li>
+          
+        </ul>
+      </li>
+      <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle" href="#" id="tradeDropdown" role="button" data-bs-toggle="dropdown">Trade</a>
+        <ul class="dropdown-menu">
+          <li><a class="dropdown-item" href="/trade">Trade</a></li>
+          <li><a class="dropdown-item" href="/algo-trade">Algo Trade</a></li>
+          <li><a class="dropdown-item" href="/algo-nifty">Algo Nifty</a></li>
+          <li><a class="dropdown-item" href="/algo-insidebar">Algo Insidebar</a></li>
+          <li><a class="dropdown-item" href="/algo_20d_insidebar">Algo Insidebar 20 day breakout</a></li>
+        </ul>
+      </li>
+      <li class="nav-item"><a class="nav-link" href="/settings">Settings</a></li>
+      <li class="nav-item"><a class="nav-link" href="/logviewer">Logviewer</a></li>
+      <li class="nav-item"><a class="nav-link" href="/school-of-stock">School of Stock</a></li>
+      <li class="nav-item"><a class="nav-link" href="/charts">Chart History</a></li>
+      <li class="nav-item"><a class="nav-link" href="/tradingview/chart">TradingView Chart</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- 💬 Flash Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="container mt-4">
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
+<!-- 📦 Main Content -->
+{% block content %}{% endblock %}
+
+<!-- JS Libraries -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>
+
