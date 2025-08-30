@@ -720,8 +720,12 @@ async function renderStocks() {
 // Load chart data
 async function loadChartData(stock, card) {
     try {
-        const response = await fetch(`/tradingview/api/stock_data?instrument_id=${stock.instrument_id}`);
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        // Detect if running behind API Gateway
+        const isApiGateway = window.location.hostname.includes("execute-api");
+        const stagePrefix = isApiGateway ? "/prod" : "";
+
+       // Fetch data from backend API
+        const response = await fetch(`${stagePrefix}/tradingview/api/stock_data?instrument_id=${stock.instrument_id}`);
         
         const rawData = await response.json();
         if (!rawData || rawData.length === 0) throw new Error('No data available');
