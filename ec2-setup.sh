@@ -1,50 +1,27 @@
 #!/bin/bash
-# ec2-setup.sh
+# Update OS packages
+yum update -y
 
-echo "🚀 Setting up EC2 instance for TradingView App..."
+# Install Python3, Git, and venv support
+yum install -y python3 git python3-venv
 
-# Update system
-sudo yum update -y
+# Create Python virtual environment
+python3 -m venv /home/ec2-user/myenv
+source /home/ec2-user/myenv/bin/activate
 
-# Install Python 3.9 and development tools
-sudo yum install -y python3.9 python3.9-pip python3.9-devel
-sudo yum install -y gcc-c++ make openssl-devel libffi-devel
+# Upgrade pip and install boto3
+pip install --upgrade pip
+pip install boto3
 
-# Install Nginx
-sudo yum install -y nginx
-sudo systemctl start nginx
-sudo systemctl enable nginx
-
-# Create application directory
-sudo mkdir -p /var/www/trading-app
-sudo chown ec2-user:ec2-user /var/www/trading-app
-
-# Install AWS CLI (for S3 access)
-curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-unzip awscliv2.zip
-sudo ./aws/install
-rm -rf awscliv2.zip aws/
-
-# Create virtual environment
-cd /var/www/trading-app
-python3.9 -m venv venv
-source venv/bin/activate
+# Clone the GitHub repo
+cd /home/ec2-user
+git clone https://github.com/avijitMajumder/viewtradingapp_aws.git
+cd viewtradingapp_aws/
 
 # Install Python dependencies
-pip install --upgrade pip
-pip install flask pandas numpy python-dotenv boto3 dhanhq gunicorn
+pip install -r requirements.txt
 
-# Configure AWS credentials (you'll need to set these manually)
-mkdir -p ~/.aws
-cat > ~/.aws/config <<EOF
-[default]
-region = ap-south-1
-output = json
-EOF
+# Optional: auto-activate virtual environment on login
+echo "source /home/ec2-user/myenv/bin/activate" >> /home/ec2-user/.bashrc
 
-echo "✅ EC2 setup complete!"
-echo "📝 Next steps:"
-echo "1. Set AWS credentials: aws configure"
-echo "2. Copy your application files to /var/www/trading-app"
-echo "3. Set up environment variables"
-echo "4. Configure Nginx and start the application"
+echo "EC2 setup complete!"
