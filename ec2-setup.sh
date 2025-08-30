@@ -12,6 +12,7 @@ source /home/ec2-user/myenv/bin/activate
 # Upgrade pip and install boto3
 pip install --upgrade pip
 pip install boto3
+sudo yum install git -y
 
 # Clone the GitHub repo
 cd /home/ec2-user
