@@ -6,32 +6,73 @@ import time
 from typing import Dict, Optional, List, Any
 from dotenv import load_dotenv
 import boto3
+import json  # <-- add this
 from io import StringIO
 import tempfile
 from botocore.exceptions import ClientError, NoCredentialsError
 
-# Load environment variables
-load_dotenv()
-DHAN_CLIENT_ID = os.getenv("DHAN_CLIENT_ID")
-DHAN_ACCESS_TOKEN = os.getenv("DHAN_ACCESS_TOKEN")
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+# Load environment variables
+load_dotenv()
+
+def get_dhan_credentials(secret_name="dhan_api_secret", region_name="ap-south-1"):
+    """Retrieve DHAN credentials from AWS Secrets Manager"""
+    try:
+        client = boto3.client("secretsmanager", region_name=region_name)
+        response = client.get_secret_value(SecretId=secret_name)
+        secret_dict = json.loads(response['SecretString'])
+        return secret_dict.get("DHAN_CLIENT_ID"), secret_dict.get("DHAN_ACCESS_TOKEN")
+    except Exception as e:
+        logger.error(f"❌ Failed to retrieve secret '{secret_name}': {e}")
+        return None, None
+
+# Get credentials securely from Secrets Manager
+DHAN_CLIENT_ID, DHAN_ACCESS_TOKEN = get_dhan_credentials()
+
+
 
 # S3 Configuration - CORRECTED BUCKET NAME
-S3_BUCKET = os.getenv("S3_BUCKET", "mytradeapp-csv-bucket")  # Changed to your actual bucket name
+#S3_BUCKET = os.getenv("S3_BUCKET", "mytradeapp-csv-bucket")  # Changed to your actual bucket name
+S3_BUCKET = "mytradeapp-csv-bucket"  # Hard-coded or configured via IAM role only
 S3_MAPPING_KEY = "uploads/mapping.csv"
 S3_EOD_DIR = "eod_data"
 S3_DROP_DIR = "stock_dump_eod"
 
 # Initialize S3 client with error handling
-try:
-    s3_client = boto3.client('s3', region_name='ap-south-1')
-    logger.info("✅ S3 client initialized")
-except Exception as e:
-    logger.error(f"❌ Failed to initialize S3 client: {e}")
-    s3_client = None
+
+
+def init_s3_client():
+    try:
+        client = boto3.client('s3', region_name='ap-south-1')
+        # Quick test: list buckets to ensure role works
+        client.list_buckets()
+        logger.info("✅ S3 client initialized with IAM Role")
+        return client
+    except NoCredentialsError:
+        logger.error("❌ No credentials found for S3. Ensure EC2 IAM Role is attached.")
+        return None
+    except ClientError as e:
+        logger.error(f"❌ Failed to initialize S3 client: {e}")
+        return None
+
+s3_client = init_s3_client()
+
+def get_accessible_buckets():
+    if not s3_client:
+        return []
+    try:
+        response = s3_client.list_buckets()
+        return [b['Name'] for b in response.get('Buckets', [])]
+    except Exception as e:
+        logger.error(f"❌ Could not list buckets: {e}")
+        return []
+
+logger.info(f"Accessible buckets: {get_accessible_buckets()}")
+
 
 # Initialize Dhan SDK
 dhan = None
