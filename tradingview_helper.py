@@ -384,6 +384,37 @@ def upload_csv_to_s3(file_path, s3_key):
         logger.error(f"❌ Failed to upload to S3: {e}")
         return False
 
+
+# tradingview_helper.py
+def get_ec2_public_ip(tag_name="FlaskTradingApp", region_name="ap-south-1"):
+    """
+    Get the public IP of a running EC2 instance with the given tag.
+    Uses IAM Role attached to EC2, no credentials needed in .env.
+    """
+    try:
+        ec2_client = boto3.client('ec2', region_name=region_name)
+        response = ec2_client.describe_instances(
+            Filters=[
+                {'Name': 'tag:Name', 'Values': [tag_name]},
+                {'Name': 'instance-state-name', 'Values': ['running']}
+            ]
+        )
+
+        for reservation in response.get('Reservations', []):
+            for instance in reservation.get('Instances', []):
+                public_ip = instance.get('PublicIpAddress')
+                if public_ip:
+                    return public_ip
+
+        logger.warning(f"No running EC2 instance found with tag '{tag_name}'")
+        return None
+
+    except Exception as e:
+        logger.error(f"❌ Error fetching EC2 public IP: {e}")
+        return None
+
+
+
 # Initialize on import
 logger.info("TradingView helper initialized")
 check_s3_bucket_exists()
