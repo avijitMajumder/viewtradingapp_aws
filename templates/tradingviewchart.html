@@ -49,6 +49,7 @@ body { background: var(--light-bg); color: var(--text-primary); font-family: Ari
 .stock-card:hover { transform: translateY(-5px); box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
 .card-header { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid var(--border-color); }
 .stock-name { font-weight: 600; font-size: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 70%; }
+.tock-setup { font-weight: 600; font-size: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 70%; }
 .card-actions { display: flex; gap: 10px; }
 .action-btn { background: none; border: none; cursor: pointer; color: var(--text-secondary); font-size: 16px; padding: 5px; border-radius: 4px; transition: all 0.2s; }
 .action-btn:hover { color: var(--primary); background: rgba(41, 98, 255, 0.1); }
@@ -648,6 +649,7 @@ async function renderStocks() {
             card.innerHTML = `
                 <div class="card-header">
                     <div class="stock-name" title="${stock.stock_name}">${stock.stock_name}</div>
+                    <div class="stock-setup" title="${stock.setup_case}">${stock.setup_case || ''}</div>
                     <div class="card-actions">
                         <button class="action-btn favorite-btn ${isFavorite ? 'favorited' : ''}" 
                                 data-id="${stock.instrument_id}" title="${isFavorite ? 'Remove from favorites' : 'Add to favorites'}">
