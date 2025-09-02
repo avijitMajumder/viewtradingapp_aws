@@ -32,6 +32,7 @@ def get_dhan_credentials(secret_name="dhan_api_secret", region_name="ap-south-1"
 
 # Get credentials securely from Secrets Manager
 DHAN_CLIENT_ID, DHAN_ACCESS_TOKEN = get_dhan_credentials()
+logger.info(f"🔑 DHAN_CLIENT_ID: {DHAN_CLIENT_ID}, DHAN_ACCESS_TOKEN: {'*' * 8 if DHAN_ACCESS_TOKEN  else None}")
 
 
 
