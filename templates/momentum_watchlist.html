@@ -1,0 +1,875 @@
+{% extends "base.html" %}
+
+{% block title %}Momentum Swing Watchlist{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 px-3">
+  <!-- Header Section -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="fw-bold mb-0 text-primary">Momentum Swing Watchlist</h2>
+      <p class="text-muted">Track and manage your momentum trading opportunities</p>
+    </div>
+    <div class="d-flex gap-2">
+      <!-- 🔥 NEW Auto Buy Toggle -->
+      <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" id="autoBuyToggle">
+        <label class="form-check-label fw-semibold text-danger" for="autoBuyToggle">
+          🚀 Auto Buy (9:31+)
+        </label>
+      </div>
+      <button id="copyAllBtn" class="btn btn-outline-primary d-flex align-items-center">
+        <i class="bi bi-clipboard me-2"></i>Copy All Stocks
+      </button>
+      <button id="copyImageBtn" class="btn btn-outline-primary">
+      📷 Copy Screenshot
+    </button>
+      <button id="refreshBtn" class="btn btn-primary d-flex align-items-center">
+        <i class="bi bi-arrow-clockwise me-2"></i>Refresh Now
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats Overview Cards - Improved layout -->
+  <div class="row mb-4 g-3"> <!-- Added g-3 for consistent gutters -->
+    <div class="col-xl-2 col-md-4 col-sm-6"> <!-- Responsive column sizing -->
+      <div class="card stat-card h-100"> <!-- Added h-100 for consistent height -->
+        <div class="card-body d-flex align-items-center p-3"> <!-- Added p-3 for inner padding -->
+          <div class="stat-icon bg-primary"><i class="bi bi-graph-up"></i></div>
+          <div class="ms-3">
+            <h6 class="card-title mb-0">Total Stocks</h6>
+            <h3 class="mb-0" id="totalStocks">{{ data|length if data else 0 }}</h3>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-2 col-md-4 col-sm-6">
+      <div class="card stat-card h-100">
+        <div class="card-body d-flex align-items-center p-3">
+          <div class="stat-icon bg-success"><i class="bi bi-lightning-charge"></i></div>
+          <div class="ms-3">
+            <h6 class="card-title mb-0">Breakouts</h6>
+            <h3 class="mb-0" id="breakoutCount">0</h3>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-2 col-md-4 col-sm-6">
+      <div class="card stat-card h-100">
+        <div class="card-body d-flex align-items-center p-3">
+          <div class="stat-icon bg-info"><i class="bi bi-bag-check"></i></div>
+          <div class="ms-3">
+            <h6 class="card-title mb-0">Bought Today</h6>
+            <h3 class="mb-0" id="boughtCount">0</h3>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-2 col-md-4 col-sm-6">
+      <div class="card stat-card h-100">
+        <div class="card-body d-flex align-items-center p-3">
+          <div class="stat-icon bg-warning"><i class="bi bi-clock-history"></i></div>
+          <div class="ms-3">
+            <h6 class="card-title mb-0">Market Status</h6>
+            <h3 class="mb-0" id="marketStatus">Closed</h3>
+            <small class="text-muted">⏳ Next refresh in <span id="nextRefresh">--</span>s</small>
+          </div>
+        </div>
+      </div>
+    </div>
+<div class="col-xl-2 col-md-6 col-sm-8">
+  <div class="card stat-card h-100">
+    <div class="card-body d-flex align-items-center p-3">
+      <div class="stat-icon bg-secondary"><i class="bi bi-currency-dollar"></i></div>
+      <div class="ms-3 flex-grow-1">
+        <h6 class="card-title mb-0">Today's P&L</h6>
+        <!-- Total P&L -->
+        <h5 class="mb-1" id="pnlTotal">0.00</h5>
+        <!-- Breakdown below -->
+        <small class="text-muted d-block" id="pnlBreakdown">R: 0.00 | U: 0.00</small>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+  <!-- Add Stock Card -->
+  <div class="card mb-4">
+    <div class="card-header bg-light">
+      <h5 class="mb-0">Add New Stock</h5>
+    </div>
+    <div class="card-body">
+      <form id="addStockForm" class="row g-3 align-items-end">
+        <div class="col-md-4">
+          <label class="form-label">Stock Name</label>
+          <input type="text" name="stock" placeholder="e.g., RELIANCE" class="form-control" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Entry Price</label>
+          <input type="number" step="0.01" name="entry_price" placeholder="0.00" class="form-control" required>
+        </div>
+        <div class="col-md-4">
+          <button class="btn btn-primary w-100 d-flex align-items-center justify-content-center">
+            <i class="bi bi-plus-circle me-2"></i>Add Stock
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Watchlist Table Card -->
+  <div class="card">
+    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">Watchlist</h5>
+      <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" id="autoRefreshToggle" checked>
+        <label class="form-check-label" for="autoRefreshToggle">Auto Refresh</label>
+      </div>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0" id="watchlistTable">
+          <thead class="table-light">
+            <tr>
+              <th>Stock</th>
+              <th>Instrument ID</th>
+              <th>MTF</th>
+              <th>MIS</th>
+              <th>Entry</th>
+              <th>LTP</th>
+              <th>High</th>
+              <th>Low</th>
+              <th>% Change</th>
+              <th>Time</th>
+              <th>Breakout</th>
+              <th>Action</th>
+              <th class="text-center">Operations</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if data %}
+              {% for row in data %}
+                <tr data-index="{{ loop.index0 }}" class="{% if row['Breakout'] == 'Yes' %}table-success{% endif %}">
+                  <td>
+                    <div class="d-flex align-items-center">
+                      <div class="symbol-icon me-2">
+                        {{ row["Stock Name"][0] if row["Stock Name"] }}
+                      </div>
+                      <span contenteditable="true" data-field="Stock Name">{{ row["Stock Name"] }}</span>
+                    </div>
+                  </td>
+                  <td data-field="Instrument ID">{{ row["Instrument ID"] }}</td>
+                  <td data-field="MTF_LEVERAGE">{{ row["MTF_LEVERAGE"] }}</td>
+                  <td data-field="MIS_LEVERAGE">{{ row["MIS_LEVERAGE"] }}</td>
+                  <td>
+                    <div class="d-flex align-items-center">
+                      <span contenteditable="true" data-field="Entry Price" class="entry-price-editable">{{ row["Entry Price"] }}</span>
+                      <button class="btn btn-sm btn-link text-secondary save-entry-btn" title="Save Entry Price">
+                        <i class="bi bi-check-lg"></i>
+                      </button>
+                    </div>
+                  </td>
+                  <td data-field="LTP" class="fw-bold">{{ row["LTP"] }}</td>
+                  <td data-field="High">{{ row["High"] }}</td>
+                  <td data-field="Low">{{ row["Low"] }}</td>
+                  <td data-field="% Change">
+                    <span class="badge {% if row['% Change']|float > 0 %}bg-success{% else %}bg-danger{% endif %}">
+                      {{ row["% Change"] }}%
+                    </span>
+                  </td>
+                  <td data-field="Time">{{ row["Time"] }}</td>
+                  <td data-field="Breakout">
+                    <span class="badge {% if row['Breakout'] == 'Yes' %}bg-success{% else %}bg-secondary{% endif %}">
+                      {{ row["Breakout"] }}
+                    </span>
+                  </td>
+                  <td>
+                    <div class="d-flex align-items-center">
+                      <span data-field="Action" class="badge {% if row['Action'] == 'AUTO_BUYED' %}bg-success{% else %}bg-info{% endif %}">
+                        {{ row["Action"] }}
+                      </span>
+                      {% if row["Action"] and row["Action"] != "N/A" %}
+                      <button class="btn btn-sm btn-link text-warning clear-action-btn" title="Clear Action">
+                        <i class="bi bi-x-circle"></i>
+                      </button>
+                      {% endif %}
+                    </div>
+                  </td>
+                  <td>
+                    <div class="d-flex justify-content-center gap-1">
+                      <button class="btn btn-sm btn-outline-success buy-btn" title="Buy Stock">
+                        <i class="bi bi-cart"></i>
+                      </button>
+                      <button class="btn btn-sm btn-outline-danger delete-btn" title="Delete Stock">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="13" class="text-center py-4 text-muted">
+                  <i class="bi bi-inbox display-4 d-block mb-2"></i>
+                  No stocks in watchlist. Add your first stock above.
+                </td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toastContainer" style="position: fixed; top: 1rem; right: 1rem; z-index: 1055;"></div>
+
+{% endblock %}
+
+{% block styles %}
+<style>
+  .stat-card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    transition: transform 0.2s;
+    margin-bottom: 0; /* Remove bottom margin as we're using grid gap */
+  }
+  
+  .stat-card:hover {
+    transform: translateY(-5px);
+  }
+  
+  .stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    flex-shrink: 0; /* Prevent icon from shrinking */
+  }
+  
+  .symbol-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background-color: #f0f5ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: #3b71ca;
+    flex-shrink: 0; /* Prevent icon from shrinking */
+  }
+  
+  .table th {
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    color: #6c757d;
+  }
+  
+  .table td {
+    vertical-align: middle;
+  }
+  
+  .card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  }
+  
+  .card-header {
+    border-radius: 12px 12px 0 0 !important;
+  }
+  
+  .form-control:focus {
+    box-shadow: 0 0 0 0.2rem rgba(59, 113, 202, 0.25);
+    border-color: #3b71ca;
+  }
+  
+  .btn {
+    border-radius: 8px;
+    font-weight: 500;
+  }
+  
+  .badge {
+    font-size: 0.75em;
+    border-radius: 6px;
+  }
+  
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<script>
+// 🔥 CHANGED: Track auto-buy per symbol
+let autoBuyDone = new Set();
+let refreshInterval = 30; // seconds between auto-refresh
+let refreshCountdown = refreshInterval;
+let refreshTimer;
+
+// 🔥 NEW: Sync auto-bought status from server
+async function syncAutoBoughtStocks() {
+  try {
+    const res = await fetch("/api/get_auto_buy_status");
+    const result = await res.json();
+    if (result.success && result.auto_bought_stocks) {
+      autoBuyDone = new Set(result.auto_bought_stocks);
+      console.log("[Auto-Buy] Synced auto-bought stocks:", Array.from(autoBuyDone));
+      updateBoughtCount();
+    }
+  } catch (err) {
+    console.error("Error syncing auto-bought stocks:", err);
+  }
+}
+
+function updateStats() {
+  // Update total stocks
+  $('#totalStocks').text($("#watchlistTable tbody tr").not(':has(td:contains(\"No stocks\"))').length);
+  
+  // Update breakout count
+  const breakoutCount = $('td[data-field="Breakout"] span.badge').filter(function() {
+    const val = $(this).text().trim().toUpperCase();
+    console.log(`[Stats] Found Breakout value: ${val}`);
+    return val === "YES";
+  }).length;
+  console.log("[Stats] Total Breakout count:", breakoutCount);
+  $('#breakoutCount').text(breakoutCount);
+  
+  // Update market status
+  $('#marketStatus').text(isMarketOpen() ? "Open" : "Closed");
+}
+
+// Update bought count
+function updateBoughtCount() {
+  const boughtCount = $('span.badge.bg-success:contains("AUTO_BUYED")').length;
+  $('#boughtCount').text(boughtCount);
+}
+
+// 🔥 CHANGED: Fixed market hours (Mon-Fri, 9:15–15:30 IST)
+function isMarketOpen() {
+  const now = new Date();
+  const nowIST = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+  const day = nowIST.getDay(); 
+  const totalMinutes = nowIST.getHours() * 60 + nowIST.getMinutes();
+  const open = (day >= 1 && day <= 5 && totalMinutes >= 5 && totalMinutes <= 1500); 
+  console.log(`[Market Check] Day: ${day}, Time: ${nowIST.toLocaleTimeString("en-IN")}, Market Open: ${open}`);
+  return open;
+}
+
+function isMarketOpenAndAfter931() {
+  const now = new Date();
+  const nowIST = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+  const day = nowIST.getDay();
+  const totalMinutes = nowIST.getHours() * 60 + nowIST.getMinutes();
+  // Open between 9:15 (555) and 15:30 (930), AND after 9:31 (571)
+  return (day >= 1 && day <= 5 && totalMinutes >= 571 && totalMinutes <= 1500);
+}
+
+// ✅ Auto Buy function wrapper
+async function runAutoBuyIfAllowed() {
+  if ($("#autoBuyToggle").is(":checked") && isMarketOpenAndAfter931()) {
+   console.log("[AutoBuy] ✅ Toggle ON & time ≥ 9:31 → Running auto-buy...");
+    await autoBuyBreakout();
+  } else {
+    console.log("[AutoBuy] ❌ Skipped (toggle off or before 9:31)");
+  }
+}
+// Toast function
+function showToast(title, message, type="success") {
+  const bgClass = type==="success"?"bg-success":type==="danger"?"bg-danger":"bg-info";
+  const toast = $(`
+    <div class="toast align-items-center text-white ${bgClass} border-0 mb-2" role="alert" aria-live="assertive" aria-atomic="true" style="min-width:300px;">
+      <div class="d-flex">
+        <div class="toast-body"><strong>${title}</strong><br>${message}</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>
+    </div>
+  `);
+  $("#toastContainer").append(toast);
+  const bsToast = new bootstrap.Toast(toast[0], { delay: 7000 });
+  bsToast.show();
+  toast.on("hidden.bs.toast", function() { $(this).remove(); });
+}
+
+// Copy All Stocks to Clipboard with NSE: prefix and -EQ suffix
+$("#copyAllBtn").on("click", function() {
+  const stocks = [];
+  $("#watchlistTable tbody tr").each(function() {
+    const symbol = $(this).find("[data-field='Stock Name']").text().trim();
+    if (symbol) stocks.push("NSE:" + symbol + "-EQ");
+  });
+  
+  if (stocks.length === 0) {
+    showToast("Info", "No stocks to copy", "info");
+    return;
+  }
+  
+  const textToCopy = stocks.join(",");
+  navigator.clipboard.writeText(textToCopy).then(() => {
+    showToast("Copied", `${stocks.length} stocks copied to clipboard`, "success");
+  }).catch(err => {
+    showToast("Error", "Failed to copy to clipboard", "danger");
+  });
+});
+
+// Add Stock
+$("#addStockForm").on("submit", function(e){ 
+  e.preventDefault(); 
+  $.post("/add_stock", $(this).serialize(), ()=>location.reload()); 
+});
+
+// Inline Edit
+$(document).on("blur","td[contenteditable=true]", function(){
+  const td=$(this); 
+  const value=td.text(); 
+  const field=td.data("field"); 
+  const index=td.closest("tr").data("index");
+  $.post(`/update_stock/${index}`, {field,value});
+});
+
+// Save Entry Price
+$(document).on("click", ".save-entry-btn", function(){
+  const row = $(this).closest("tr");
+  const index = row.data("index");
+  const value = row.find(".entry-price-editable").text();
+  $.post(`/update_stock/${index}`, {field: "Entry Price", value}, function(response) {
+    showToast("Success", "Entry price updated successfully", "success");
+  });
+});
+
+// Clear Action
+$(document).on("click", ".clear-action-btn", function(){
+  const row = $(this).closest("tr");
+  const index = row.data("index");
+  $.post(`/update_stock/${index}`, {field: "Action", value: ""}, function(response) {
+    row.find("[data-field='Action']").text("").removeClass("bg-success").addClass("bg-info");
+    $(this).hide();
+    showToast("Success", "Action cleared successfully", "success");
+    updateBoughtCount();
+  }.bind(this));
+});
+
+// Delete
+$(document).on("click",".delete-btn", function(){ 
+  const index=$(this).closest("tr").data("index"); 
+  $.post(`/delete_stock/${index}`, ()=>location.reload()); 
+});
+
+// Buy Stock
+async function buyStock(btn, row, isAutoBuy = false) {
+  const symbol = row.find("span[data-field='Stock Name']").text().trim();
+  const price = parseFloat(row.find(".entry-price-editable").text());
+  const sl_price_raw = parseFloat(row.find("td[data-field='Low']").text());
+  const sl_price = Math.round(sl_price_raw);
+  
+  if (isAutoBuy) {
+    btn = row.find(".buy-btn");
+  }
+  
+  btn.prop("disabled", true).html('<i class="bi bi-hourglass-split"></i>');
+  
+  try {
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    const sizingRes = await fetch("/api/position_sizing", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({symbol, entry: price, sl_price, productType: "INTRADAY"})
+    });
+    
+    const sizingData = await sizingRes.json();
+    if (!sizingData.success) throw new Error("Position sizing failed");
+    
+    const qty = sizingData.quantity;
+    
+    // 🔥 KEEP ORDER TYPE AS LIMIT (not changing to MARKET)
+    const orderRes = await fetch("/api/place_order_custom", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        symbol, 
+        action: "BUY", 
+        qty, 
+        order_type: "LIMIT", // Keeping as LIMIT order
+        limit_price: price,  // Using the entry price as limit price
+        trigger_price: 0
+      })
+    });
+    
+    const result = await orderRes.json();
+    if (result.status === "success") {
+      btn.removeClass("btn-outline-success").addClass("btn-success").html('<i class="bi bi-check-lg"></i>');
+      row.find("td[data-field='Stock Name']").append(' <span class="text-success"></span>');
+      
+      const message = isAutoBuy ? 
+        `🚀 AUTO-BUY: ${symbol} qty: ${qty} at limit price ${price}` : 
+        `Order placed for ${symbol} qty: ${qty} at limit price ${price}`;
+      
+      showToast("Buy Success", message, "success");
+      console.log(`[Buy Success] ${symbol} bought qty: ${qty} at ${price}`);
+    } else {
+      throw new Error(result.message || "Order failed");
+    }
+  } catch(err) { 
+    console.error(err); 
+    const message = isAutoBuy ? 
+      `Auto Buy failed for ${symbol}: ${err.message}` : 
+      `Quick Buy failed for ${symbol}: ${err.message}`;
+    
+    showToast("Buy Failed", message, "danger"); 
+    btn.prop("disabled", false).html('<i class="bi bi-cart"></i>'); 
+  }
+  
+  // 🔥 ALWAYS mark as AUTO_BUYED if it's an auto-buy, regardless of success/failure
+  if (isAutoBuy) {
+    try {
+      row.find("[data-field='Action']").text("AUTO_BUYED").removeClass("bg-info").addClass("bg-success");
+      
+      // Notify backend
+      const res = await fetch("/api/mark_auto_buy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ symbol })
+      });
+      const json = await res.json();
+      if (json.success) {
+        console.log(`[Auto-Buy] ${symbol} marked as AUTO_BUYED on server`);
+      } else {
+        console.warn(`[Auto-Buy] Failed to mark ${symbol}: ${json.error}`);
+      }
+    } catch(err) { 
+      console.error(`[Auto-Buy] Error marking ${symbol}: ${err}`); 
+    }
+  }
+  
+  // Refresh data
+  try {
+    const res = await fetch("/api/update_watchlist"); 
+    const json = await res.json();
+    if (json.success) {
+      const updatedRow = json.data.find(r => r["Stock Name"] === symbol);
+      if (updatedRow) {
+        row.find("td[data-field='LTP']").text(updatedRow["LTP"] || "");
+        row.find("td[data-field='High']").text(updatedRow["High"] || "");
+        row.find("td[data-field='Low']").text(updatedRow["Low"] || "");
+        row.find("td[data-field='% Change']").text(updatedRow["% Change"] || "")
+          .removeClass("bg-success bg-danger")
+          .addClass(updatedRow["% Change"] > 0 ? "bg-success" : "bg-danger");
+        row.find("td[data-field='Breakout']").text(updatedRow["Breakout"] || "")
+          .removeClass("bg-success bg-secondary")
+          .addClass(updatedRow["Breakout"] === "Yes" ? "bg-success" : "bg-secondary");
+        row.find("td[data-field='Action']").text(updatedRow["Action"] || "")
+          .removeClass("bg-success bg-info")
+          .addClass(updatedRow["Action"] === "AUTO_BUYED" ? "bg-success" : "bg-info");
+        row.find("td[data-field='Time']").text(updatedRow["Time"] || "");
+        
+        // Update row highlighting
+        row.removeClass("table-success");
+        if (updatedRow["Breakout"] === "Yes") {
+          row.addClass("table-success");
+        }
+      }
+    }
+  } catch(err) {
+    console.error("Error refreshing watchlist:", err);
+  }
+  
+  updateStats();
+  updateBoughtCount();
+}
+
+// Buy click
+$(document).on("click", ".buy-btn", function() { 
+  buyStock($(this), $(this).closest("tr"), false); 
+});
+
+// 🔥 CHANGED: Enhanced auto-buy breakout with better tracking
+// 🔥 CHANGED: Auto-buy breakout sorted by SL% (lowest first)
+async function autoBuyBreakout() { 
+  if (!$("#autoBuyToggle").is(":checked")) {
+    console.log("[Auto-Buy] Skipped → Toggle OFF");
+    return;
+  }
+  console.log("[Auto-Buy] Checking breakout status...");
+  if (!isMarketOpen()) return;
+
+  const rows = $("#watchlistTable tbody tr").toArray();
+
+  // 1️⃣ Collect breakout stocks not yet bought
+  let breakoutStocks = rows.map(tr => {
+    const row = $(tr);
+    const symbol = row.find("span[data-field='Stock Name']").text().trim();
+    const breakout = row.find("td[data-field='Breakout'] span.badge").text().trim().toLowerCase();
+    const action = row.find("span[data-field='Action']").text().trim().toUpperCase();
+    const entry = parseFloat(row.find(".entry-price-editable").text()) || 0;
+    const low = parseFloat(row.find("td[data-field='Low']").text()) || 0;
+    const slPercent = entry && low ? ((entry - low) / entry) * 100 : 0;
+
+    return { row, symbol, breakout, action, slPercent };
+  }).filter(stock => stock.breakout === "yes" && stock.action !== "AUTO_BUYED" && !autoBuyDone.has(stock.symbol));
+
+  // 2️⃣ Sort by SL% ascending → lowest SL% first
+  breakoutStocks.sort((a, b) => a.slPercent - b.slPercent);
+
+  // 3️⃣ Sequentially auto-buy
+  let boughtAny = false;
+  for (const stock of breakoutStocks) {
+    autoBuyDone.add(stock.symbol);
+    boughtAny = true;
+    console.log(`[Auto-Buy] ${stock.symbol} | SL%: ${stock.slPercent.toFixed(2)} → buying...`);
+    await buyStock(null, stock.row, true);
+    await new Promise(resolve => setTimeout(resolve, 2000));
+  }
+
+  if (boughtAny) {
+    showToast("Auto Buy", `Auto-buy executed for ${breakoutStocks.length} breakout stocks (low → high SL%)`, "info");
+  }
+}
+
+
+
+function startRefreshCountdown() {
+  clearInterval(refreshTimer);
+  refreshCountdown = refreshInterval;
+
+  // Update immediately
+  $("#nextRefresh").text(refreshCountdown);
+
+  refreshTimer = setInterval(() => {
+    refreshCountdown--;
+    $("#nextRefresh").text(refreshCountdown);
+
+    if (refreshCountdown <= 0) {
+      clearInterval(refreshTimer);
+      refreshWatchlist(true);  // trigger your existing refresh
+      startRefreshCountdown(); // restart countdown
+    }
+  }, 1000);
+}
+
+// 🔥 CHANGED: Enhanced refresh function with proper auto-buy control
+async function refreshWatchlist(isPeriodicRefresh = false) { 
+  console.log("[Refresh] Updating watchlist...");
+  try { 
+    const res = await fetch("/api/update_watchlist"); 
+    const result = await res.json();
+    if (result.success) { 
+      const tbody = $("#watchlistTable tbody"); 
+      tbody.empty(); 
+      const columns = ["Stock Name", "Instrument ID", "MTF_LEVERAGE", "MIS_LEVERAGE", "Entry Price", "LTP", "High", "Low", "% Change", "Time", "Breakout", "Action"];
+      
+      if (result.data.length === 0) {
+        tbody.append('<tr><td colspan="13" class="text-center py-4 text-muted"><i class="bi bi-inbox display-4 d-block mb-2"></i>No stocks in watchlist. Add your first stock above.</td></tr>');
+      } else {
+        result.data.forEach((row, idx) => { 
+          const tr = $("<tr>").attr("data-index", idx); 
+          if (row["Breakout"] === "Yes") tr.addClass("table-success");
+          
+          columns.forEach(col => {
+            if (col === "Stock Name") {
+              const td = $("<td>");
+              const div = $("<div>").addClass("d-flex align-items-center");
+              const symbolIcon = $("<div>").addClass("symbol-icon me-2").text(row[col] ? row[col][0] : "");
+              const span = $("<span>").prop("contenteditable", true).attr("data-field", col).text(row[col] !== undefined ? row[col] : "");
+              div.append(symbolIcon).append(span);
+              td.append(div);
+              tr.append(td);
+            } else if (col === "Entry Price") {
+              const td = $("<td>");
+              const editableDiv = $("<div>").addClass("d-flex align-items-center");
+              const editableSpan = $("<span>").addClass("entry-price-editable").prop("contenteditable", true).attr("data-field", col).text(row[col] !== undefined ? row[col] : "");
+              const saveBtn = $("<button>").addClass("btn btn-sm btn-link text-secondary save-entry-btn").attr("title", "Save Entry Price").html('<i class="bi bi-check-lg"></i>');
+              editableDiv.append(editableSpan).append(saveBtn);
+              td.append(editableDiv);
+              tr.append(td);
+            } else if (col === "% Change") {
+              const td = $("<td>");
+              const badge = $("<span>").addClass("badge " + (row[col] > 0 ? "bg-success" : "bg-danger")).text(row[col] !== undefined ? row[col] + "%" : "");
+              td.append(badge);
+              tr.append(td);
+            } else if (col === "Breakout") {
+  const td = $("<td>").attr("data-field", "Breakout");  // <-- add this
+  const badge = $("<span>").addClass("badge " + (row[col] === "Yes" ? "bg-success" : "bg-secondary")).text(row[col] !== undefined ? row[col] : "");
+  td.append(badge);
+  tr.append(td);
+}
+
+
+ else if (col === "Action") {
+              const td = $("<td>");
+              const actionDiv = $("<div>").addClass("d-flex align-items-center");
+              const actionBadge = $("<span>").addClass("badge " + (row[col] === "AUTO_BUYED" ? "bg-success" : "bg-info")).attr("data-field", col).text(row[col] !== undefined ? row[col] : "");
+              let clearBtn = $("");
+              if (row[col] && row[col] !== "N/A") {
+                clearBtn = $("<button>").addClass("btn btn-sm btn-link text-warning clear-action-btn").attr("title", "Clear Action").html('<i class="bi bi-x-circle"></i>');
+              }
+              actionDiv.append(actionBadge).append(clearBtn);
+              td.append(actionDiv);
+              tr.append(td);
+            } else {
+              const td = $("<td>").attr("data-field", col).text(row[col] !== undefined ? row[col] : ""); 
+              if (col === "LTP") td.addClass("fw-bold");
+              tr.append(td); 
+            }
+          });
+          
+          const operationsTd = $("<td>").addClass("text-center");
+          const operationsDiv = $("<div>").addClass("d-flex justify-content-center gap-1");
+          const buyBtn = $('<button class="btn btn-sm btn-outline-success buy-btn" title="Buy Stock"><i class="bi bi-cart"></i></button>');
+          const deleteBtn = $('<button class="btn btn-sm btn-outline-danger delete-btn" title="Delete Stock"><i class="bi bi-trash"></i></button>');
+          operationsDiv.append(buyBtn).append(deleteBtn);
+          operationsTd.append(operationsDiv);
+          tr.append(operationsTd);
+          
+          tbody.append(tr); 
+        });
+      }
+      
+      // Update stats
+      updateStats();
+      updateBoughtCount();
+      
+      // 🔥 CHANGED: Only trigger auto-buy on manual refresh, not on periodic refresh
+      if (!isPeriodicRefresh) {
+        runAutoBuyIfAllowed();
+      }
+    }
+  } catch(err) { 
+    console.error(err); 
+  }
+}
+
+// Manual Refresh
+$("#refreshBtn").on("click", function() {
+  const btn = $(this);
+  btn.prop("disabled", true).html('<i class="bi bi-arrow-clockwise me-2"></i>Refreshing...');
+  refreshWatchlist(false).finally(() => {
+    setTimeout(() => {
+      btn.prop("disabled", false).html('<i class="bi bi-arrow-clockwise me-2"></i>Refresh Now');
+    }, 1000);
+  });
+});
+
+// Auto refresh toggle
+$("#autoRefreshToggle").on("change", function() {
+  if (this.checked) {
+    autoRefreshInterval = setInterval(() => refreshWatchlist(true), 30000);
+    showToast("Auto Refresh", "Auto refresh enabled", "info");
+  } else {
+    clearInterval(autoRefreshInterval);
+    showToast("Auto Refresh", "Auto refresh disabled", "info");
+  }
+});
+
+// 🔥 CHANGED: Reset auto-buy Set daily
+function scheduleDailyReset() { 
+  const now = new Date(); 
+  const nextReset = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0); 
+  const timeUntilReset = nextReset - now; 
+  
+  setTimeout(() => { 
+    autoBuyDone.clear(); 
+    console.log("[Daily Reset] Auto-buy flags cleared"); 
+    scheduleDailyReset(); 
+  }, timeUntilReset); 
+}
+
+document.getElementById("copyImageBtn").addEventListener("click", async () => {
+  try {
+    const table = document.getElementById("watchlistTable");
+
+    // Capture at normal scale
+    const canvas = await html2canvas(table, { scale: 1 });
+
+    // Resize canvas to max width = 800px (keeping aspect ratio)
+    const maxWidth = 800;
+    const scale = Math.min(1, maxWidth / canvas.width);
+
+    const resizedCanvas = document.createElement("canvas");
+    const ctx = resizedCanvas.getContext("2d");
+    resizedCanvas.width = canvas.width * scale;
+    resizedCanvas.height = canvas.height * scale;
+    ctx.drawImage(canvas, 0, 0, resizedCanvas.width, resizedCanvas.height);
+
+    // Convert resized canvas to Blob and copy to clipboard
+    resizedCanvas.toBlob(async (blob) => {
+      await navigator.clipboard.write([
+        new ClipboardItem({ [blob.type]: blob })
+      ]);
+      alert("✅ screenshot copied to clipboard!");
+    });
+  } catch (err) {
+    console.error("❌ Copy failed:", err);
+    alert("❌ Failed to copy screenshot. Check console for details.");
+  }
+});
+
+
+// 🔥 NEW JS P&L
+async function fetchTodayPnl() {
+  try {
+    const res = await fetch("/api/today_pnl");
+    const data = await res.json();
+
+    if (data.success && data.pnl) {
+      const realized = parseFloat(data.pnl.realized_pnl).toFixed(2);
+      const unrealized = parseFloat(data.pnl.unrealized_pnl).toFixed(2);
+      const total = parseFloat(data.pnl.total_pnl).toFixed(2);
+
+      // Update UI
+      const pnlTotalEl = document.getElementById("pnlTotal");
+      const pnlBreakdownEl = document.getElementById("pnlBreakdown");
+
+      pnlTotalEl.textContent = total;
+      pnlTotalEl.className = total >= 0 ? "text-success" : "text-danger";
+      pnlBreakdownEl.textContent = `R: ${realized} | U: ${unrealized}`;
+    }
+  } catch (err) {
+    console.error("Failed to fetch P&L:", err);
+  }
+}
+
+// Initial fetch & periodic refresh
+fetchTodayPnl();
+setInterval(fetchTodayPnl, 15000); // Refresh every 15 seconds
+
+// Initialize
+let autoRefreshInterval;
+
+$(document).ready(function() {
+  scheduleDailyReset();
+  
+  // Initialize auto refresh
+  autoRefreshInterval = setInterval(() => refreshWatchlist(true), 30000);
+  
+  // Sync auto-bought stocks on page load
+  syncAutoBoughtStocks();
+  
+  // Update market status
+  $('#marketStatus').text(isMarketOpen() ? "Open" : "Closed");
+  
+  // Update stats
+  updateStats();
+  updateBoughtCount();
+  
+  // Refresh immediately on page load
+  refreshWatchlist(false);
+  startRefreshCountdown(); // restart countdown
+  
+  // Set up auto-buy check
+  setInterval(autoBuyBreakout, 10000);
+});
+
+</script>
+{% endblock %}
