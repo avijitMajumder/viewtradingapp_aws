@@ -1,7 +1,12 @@
-{% extends "layout.html" %}
-{% block title %}Home - Trading App{% endblock %}
+{% extends "base.html" %}
 
 {% block content %}
-<h2>🏠 Home</h2>
-<p>Welcome to the Trading App!</p>
+<div class="container mt-4">
+    <h2>Welcome, </h2>
+    {% if role %}
+        <p>Your role: <strong>{{ role }}</strong></p>
+    {% endif %}
+    <p>Select a page from the navigation bar.</p>
+</div>
 {% endblock %}
+

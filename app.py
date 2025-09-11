@@ -18,9 +18,9 @@ oauth = OAuth(app)
 # Cognito OIDC registration
 oauth.register(
     name='cognito',
-    client_id='7q9jgv===',
-    client_secret='11h093am25aftovr7tq3v======',
-    server_metadata_url='https://cognito-idp.ap-south-1.amazonaws.com/ap-south-<>/.well-known/openid-configuration',
+    client_id='124apijpo019p2uc1a83k5ir5b',
+    client_secret='v2ahb2kt12b43k33b03lgpi63foq3cvhhtd4n31vpkon9clt1jk',
+    server_metadata_url='https://cognito-idp.ap-south-1.amazonaws.com/ap-south-1_kPo2CEj3U/.well-known/openid-configuration',
     client_kwargs={'scope': 'openid email phone'}
 )
 

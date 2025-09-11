@@ -1,0 +1,7 @@
+{% extends "layout.html" %}
+{% block title %}Home - Trading App{% endblock %}
+
+{% block content %}
+<h2>🏠 Home</h2>
+<p>Welcome to the Trading App!</p>
+{% endblock %}

@@ -10,7 +10,7 @@
             <tr>
                 <th>Role</th>
                 {% for page in pages %}
-                    <th>{{ page.name }}</th>
+                    <th>{{ page }}</th>
                 {% endfor %}
             </tr>
         </thead>
@@ -20,8 +20,8 @@
                 <td><strong>{{ role }}</strong></td>
                 {% for page in pages %}
                 <td class="text-center">
-                    <input type="checkbox" name="{{ role }}" value="{{ page.route }}"
-                    {% if page.route in access_pages %}checked{% endif %}>
+                    <input type="checkbox" name="{{ role }}" value="{{ page }}"
+                    {% if page in access_pages %}checked{% endif %}>
                 </td>
                 {% endfor %}
             </tr>
@@ -31,7 +31,7 @@
 
     <div class="mb-3">
         <label for="new_page">Add New Page:</label>
-        <input type="text" id="new_page" name="new_page" class="form-control" placeholder="Enter new page route (e.g., /reports)">
+        <input type="text" id="new_page" name="new_page" class="form-control" placeholder="Enter new page name">
     </div>
 
     <button type="submit" class="btn btn-primary">Save UI Scope</button>
@@ -39,4 +39,3 @@
 
 <a href="{{ url_for('home') }}" class="btn btn-secondary mt-3">Back Home</a>
 {% endblock %}
-
