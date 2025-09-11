@@ -16,10 +16,20 @@
         <div class="collapse navbar-collapse" id="navbarNav">
           <ul class="navbar-nav me-auto mb-2 mb-lg-0">
             {% for page in pages %}
-              <li class="nav-item">
-                <a class="nav-link {% if page.lower() == request.endpoint %}active{% endif %}" href="{{ url_for(page.lower()) }}">{{ page }}</a>
-              </li>
+              {% if page.lower() in ['home', 'trading', 'admin'] %}
+                <li class="nav-item">
+                  <a class="nav-link {% if page.lower() == request.endpoint %}active{% endif %}" 
+                     href="{{ url_for(page.lower()) }}">{{ page }}</a>
+                </li>
+              {% endif %}
             {% endfor %}
+
+            {% if role == 'admin' %}
+              <li class="nav-item">
+                <a class="nav-link {% if 'ui_management' == request.endpoint %}active{% endif %}" 
+                   href="{{ url_for('ui_management') }}">UI Management</a>
+              </li>
+            {% endif %}
           </ul>
           <span class="navbar-text text-light me-3">Role: {{ role }}</span>
           {% if session.get('user') %}
