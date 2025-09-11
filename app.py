@@ -1,12 +1,11 @@
-from flask import Flask, redirect, url_for, session, g, render_template
+from flask import Flask, redirect, url_for, session, g, render_template, request
 from authlib.integrations.flask_client import OAuth
 import os
 from werkzeug.middleware.proxy_fix import ProxyFix
 from authlib.common.security import generate_token
-from dotenv import load_dotenv
 
-# Load .env file
-load_dotenv()
+
+
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # Use a fixed secret in production
@@ -19,8 +18,8 @@ oauth = OAuth(app)
 # Cognito OIDC registration
 oauth.register(
     name='cognito',
-    client_id='7q9j',
-    client_secret='1',
+    client_id='7q9jgv===',
+    client_secret='11h093am25aftovr7tq3v======',
     server_metadata_url='https://cognito-idp.ap-south-1.amazonaws.com/ap-south-<>/.well-known/openid-configuration',
     client_kwargs={'scope': 'openid email phone'}
 )
@@ -103,7 +102,37 @@ def logout():
     session.pop('user', None)
     return redirect('/')
 
+# === Admin UI Management ===
+@app.route("/admin/ui-management", methods=["GET", "POST"])
+@require_role(["admin"])
+def ui_management():
+    global UI_PAGES, ROLE_UI_ACCESS
+
+    if request.method == "POST":
+        # 1️⃣ Update role-page access from checkboxes
+        for role in ROLE_UI_ACCESS:
+            ROLE_UI_ACCESS[role] = request.form.getlist(role)
+
+        # 2️⃣ Add new page if provided
+        new_page = request.form.get("new_page", "").strip()
+        if new_page and new_page not in UI_PAGES:
+            UI_PAGES.append(new_page)
+            # Initialize access for new page (no roles have access by default)
+            for role in ROLE_UI_ACCESS:
+                ROLE_UI_ACCESS[role] = ROLE_UI_ACCESS.get(role, [])
+
+    return render_template("ui_management.html", roles=ROLE_UI_ACCESS, pages=UI_PAGES)
+
+@app.route("/<page_name>")
+def dynamic_page(page_name):
+    # Capitalize page for display
+    page_title = page_name.capitalize()
+
+    # Only allow pages in UI_PAGES
+    if page_title not in UI_PAGES:
+        return "Page not found", 404
+
+    return render_template("dynamic_page.html", page=page_title, pages=g.ui_pages, role=g.role)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
-
