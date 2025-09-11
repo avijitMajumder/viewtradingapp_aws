@@ -1,0 +1,48 @@
+{% extends "layout.html" %}
+{% block content %}
+<h2>{{ page }}</h2>
+<p>Content for {{ page }} page.</p>
+{% endblock %}
+
+(myenv) [ec2-user@ip-172-31-4-173 templates]$ cat ui_management.html
+{% extends "base.html" %}
+{% block title %}UI Management{% endblock %}
+
+{% block content %}
+<h2>⚙️ UI Scope Management (Admin Only)</h2>
+
+<form method="post">
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Role</th>
+                {% for page in pages %}
+                    <th>{{ page }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for role, access_pages in roles.items() %}
+            <tr>
+                <td><strong>{{ role }}</strong></td>
+                {% for page in pages %}
+                <td class="text-center">
+                    <input type="checkbox" name="{{ role }}" value="{{ page }}"
+                    {% if page in access_pages %}checked{% endif %}>
+                </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="mb-3">
+        <label for="new_page">Add New Page:</label>
+        <input type="text" id="new_page" name="new_page" class="form-control" placeholder="Enter new page name">
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save UI Scope</button>
+</form>
+
+<a href="{{ url_for('home') }}" class="btn btn-secondary mt-3">Back Home</a>
+{% endblock %}
