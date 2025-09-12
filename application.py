@@ -5,6 +5,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from authlib.integrations.flask_client import OAuth
 from authlib.common.security import generate_token
 from functools import wraps
+import boto3
 
 # ===========================
 # Helpers and Business Logic
@@ -38,7 +39,22 @@ from core_logic import (
 )
 
 # ===========================
-# Flask App Setup
+# AWS SSM Integration for Secrets
+# ===========================
+def get_ssm_parameter(name, with_decryption=False):
+    ssm = boto3.client("ssm", region_name="ap-south-1")
+    try:
+        response = ssm.get_parameter(Name=name, WithDecryption=with_decryption)
+        return response["Parameter"]["Value"]
+    except ssm.exceptions.ParameterNotFound:
+        logging.error(f"SSM parameter '{name}' not found")
+        return None
+
+CLIENT_ID = get_ssm_parameter("/flask-app/client_id")
+CLIENT_SECRET = get_ssm_parameter("/flask-app/client_secret", with_decryption=True)
+USER_POOL_ID = get_ssm_parameter("/flask-app/user_pool_id")
+SERVER_METADATA_URL = f"https://cognito-idp.ap-south-1.amazonaws.com/{USER_POOL_ID}/.well-known/openid-configuration"
+# Flask App Se
 # ===========================
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "supersecretkey123")
@@ -60,9 +76,9 @@ logger = logging.getLogger(__name__)
 oauth = OAuth(app)
 oauth.register(
     name='cognito',
-    client_id='124apijpo019p2uc1a83k5ir5b',
-    client_secret='v2ahb2kt12b43k33b03lgpi63foq3cvhhtd4n31vpkon9clt1jk',
-    server_metadata_url='https://cognito-idp.ap-south-1.amazonaws.com/ap-south-1_kPo2CEj3U/.well-known/openid-configuration',
+    client_id=CLIENT_ID,
+    client_secret=CLIENT_SECRET,
+    server_metadata_url=SERVER_METADATA_URL,
     client_kwargs={'scope': 'openid email phone'}
 )
 
@@ -418,4 +434,5 @@ def dynamic_page(page_name):
 # ===========================
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
+
 
