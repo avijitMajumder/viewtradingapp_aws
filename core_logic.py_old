@@ -28,7 +28,7 @@ load_dotenv()
 # AWS Config
 # -------------------------
 AWS_REGION = os.getenv("AWS_REGION", "ap-south-1")
-
+SECRETS_NAME = os.getenv("DHAN_SECRETS_NAME", "dhan_api_secret")
 S3_BUCKET = os.getenv("S3_BUCKET", "mytradeapp-csv-bucket")
 S3_MAPPING_KEY = os.getenv("S3_MAPPING_KEY", "uploads/mapping.csv")
 S3_STOCKLIST_KEY = os.getenv(
@@ -52,33 +52,21 @@ def init_s3_client(region_name: str = AWS_REGION):
         logger.error(f"❌ Failed to init S3 client: {e}")
         return None
 
-
-# -------------------------
-# Fetch DHAN credentials from SSM Parameter Store
-# -------------------------
-def get_dhan_credentials_from_ssm(region_name: str = AWS_REGION) -> Tuple[Optional[str], Optional[str], Optional[str]]:
-    """
-    Fetch DHAN credentials and repo URL from AWS SSM Parameter Store.
-    Returns:
-        Tuple[Optional[str], Optional[str], Optional[str]]: (DHAN_CLIENT_ID, DHAN_ACCESS_TOKEN, DHAN_REPO_URL)
-    """
-    ssm = boto3.client("ssm", region_name=region_name)
+def get_dhan_credentials_from_secrets(secret_name: str = SECRETS_NAME, region_name: str = AWS_REGION) -> Tuple[Optional[str], Optional[str]]:
     try:
-        client_id = ssm.get_parameter(Name=f"/flask-app/dhan_client_id", WithDecryption=False)["Parameter"]["Value"]
-        access_token = ssm.get_parameter(Name=f"/flask-app/dhan_access_token", WithDecryption=True)["Parameter"]["Value"]
-        
-        return client_id, access_token
-    except ssm.exceptions.ParameterNotFound as e:
-        logger.error(f"❌ SSM Parameter not found: {e}")
-        return None, None, None
+        sm = boto3.client("secretsmanager", region_name=region_name)
+        resp = sm.get_secret_value(SecretId=secret_name)
+        secret = json.loads(resp.get("SecretString", "{}"))
+        return (
+            secret.get("DHAN_CLIENT_ID") or secret.get("client_id"),
+            secret.get("DHAN_ACCESS_TOKEN") or secret.get("access_token")
+        )
     except Exception as e:
-        logger.error(f"❌ Could not fetch Dhan credentials from SSM: {e}")
-        return None, None, None
-
+        logger.error(f"❌ Could not fetch Dhan credentials: {e}")
+        return None, None
 
 s3_client = init_s3_client()
-DHAN_CLIENT_ID, DHAN_ACCESS_TOKEN = get_dhan_credentials_from_ssm()
-
+DHAN_CLIENT_ID, DHAN_ACCESS_TOKEN = get_dhan_credentials_from_secrets()
 
 # -------------------------
 # Init Dhan Client

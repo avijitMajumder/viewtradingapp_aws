@@ -34,29 +34,19 @@ def init_s3_client():
 s3_client = init_s3_client()
 
 # ===========================
-# Get Dhan Credentials from AWS SSM Parameter Store
+# Get Dhan Credentials from AWS Secrets Manager
 # ===========================
-def get_dhan_credentials_from_ssm(region_name="ap-south-1"):
-    """
-    Retrieve DHAN credentials from AWS SSM Parameter Store.
-    Expects parameters:
-      /flask-app/dhan_client_id
-      /flask-app/dhan_access_token
-    """
-    ssm = boto3.client("ssm", region_name=region_name)
+def get_dhan_credentials(secret_name="dhan_api_secret", region_name="ap-south-1"):
     try:
-        client_id = ssm.get_parameter(Name="/flask-app/dhan_client_id", WithDecryption=False)["Parameter"]["Value"]
-        access_token = ssm.get_parameter(Name="/flask-app/dhan_access_token", WithDecryption=True)["Parameter"]["Value"]
-        return client_id, access_token
-    except ssm.exceptions.ParameterNotFound as e:
-        logger.error(f"❌ SSM Parameter not found: {e}")
-        return None, None
+        client = boto3.client("secretsmanager", region_name=region_name)
+        response = client.get_secret_value(SecretId=secret_name)
+        secret_dict = json.loads(response['SecretString'])
+        return secret_dict.get("DHAN_CLIENT_ID"), secret_dict.get("DHAN_ACCESS_TOKEN")
     except Exception as e:
-        logger.error(f"❌ Failed to retrieve DHAN credentials from SSM: {e}")
+        logger.error(f"❌ Failed to retrieve secret '{secret_name}': {e}")
         return None, None
 
-DHAN_CLIENT_ID, DHAN_ACCESS_TOKEN = get_dhan_credentials_from_ssm()
-logger.info(f"🔑 DHAN_CLIENT_ID: {DHAN_CLIENT_ID}, DHAN_ACCESS_TOKEN: {'*'*8 if DHAN_ACCESS_TOKEN else None}")
+DHAN_CLIENT_ID, DHAN_ACCESS_TOKEN = get_dhan_credentials()
 
 # ===========================
 # Dhan SDK Init
