@@ -1,0 +1,537 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+  <h3 class="mb-4">📊 Trading Dashboard</h3>
+
+  <!-- Tabs -->
+  <ul class="nav nav-tabs" id="tradeTabs" role="tablist">
+    <li class="nav-item">
+      <button class="nav-link active" id="place-order-tab" data-bs-toggle="tab" data-bs-target="#place-order" type="button" role="tab">📝 Place Order</button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" id="open-orders-tab" data-bs-toggle="tab" data-bs-target="#open-orders" type="button" role="tab">📂 Open Orders</button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" id="completed-orders-tab" data-bs-toggle="tab" data-bs-target="#completed-orders" type="button" role="tab">✅ Completed</button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" id="today-pnl-tab" data-bs-toggle="tab" data-bs-target="#today-pnl" type="button" role="tab">💰 Today's P&L</button>
+    </li>
+    <li class="nav-item">
+  <button class="nav-link" id="positions-tab" data-bs-toggle="tab" data-bs-target="#positions" type="button" role="tab">📌 Positions</button>
+</li>
+
+  </ul>
+
+  <!-- Tab Content -->
+  <div class="tab-content mt-3">
+    <!-- Place Order -->
+    <div class="tab-pane fade show active" id="place-order" role="tabpanel">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title mb-4">📈 Place Trade Order</h5>
+          <form method="POST" action="/trade">
+            <div class="row g-3">
+              <div class="col-md-12">
+                <label class="form-label">Transaction Type</label><br>
+                <div class="btn-group" role="group">
+                  <input type="radio" class="btn-check" name="transaction_type" id="buyBtn" value="BUY" checked>
+                  <label class="btn btn-outline-success" for="buyBtn">Buy</label>
+                  <input type="radio" class="btn-check" name="transaction_type" id="sellBtn" value="SELL">
+                  <label class="btn btn-outline-danger" for="sellBtn">Sell</label>
+                </div>
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label">Symbol</label>
+                <select id="symbolInput" name="symbol" class="form-select" required></select>
+                <div class="form-text mt-1 text-muted" id="ltpDisplay">LTP: —</div>
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label">Order Type</label>
+                <select name="order_type" class="form-select" onchange="togglePriceFields(this.value)" required>
+                  <option value="MARKET">Market</option>
+                  <option value="LIMIT">Limit</option>
+                  <option value="SL">Stop Loss (SL)</option>
+                  <option value="SL-M">Stop Loss - Market</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+  <label class="form-label">Stop Loss Price</label>
+  <input type="number" step="0.01" class="form-control" id="slPriceInput" placeholder="Enter SL Price">
+</div>
+
+<div class="col-md-4">
+  <label class="form-label">Max Quantity (Calculated)</label>
+  <input type="number" name="qty" class="form-control" id="calculatedQty" readonly required>
+</div>
+
+  <div class="col-md-3">
+          <label class="form-label fw-bold">🛍️ Product Type</label>
+          <select id="producttype" class="form-select" name="productType">
+            <option value="INTRADAY">INTRADAY</option>
+            <option value="CNC">CNC</option>
+            <option value="MARGIN">MARGIN</option>
+          </select>
+        </div>
+
+<div class="col-md-12 mt-2">
+  <div class="text-muted" id="positionDetails">
+    <small>💸 Expected Loss: — | 📦 Exposure: —| 💰 Fund : —| 🔁 Margin : —</small>
+  </div>
+</div>
+
+
+
+              <div class="col-md-4">
+                <label class="form-label">Quantity</label>
+                <input type="number" name="qtyman" class="form-control" required>
+              </div>
+            <div class="col-md-12 mt-2">
+  <div class="text-muted" id="positionDetailsqty">
+    <small> 📌 Manual Exposure: —</small>
+  </div>
+</div>
+              <div class="col-md-4 price-field" style="display:none;">
+                <label class="form-label">Limit Price</label>
+                <input type="number" name="limit_price" class="form-control" step="0.01">
+              </div>
+
+              <div class="col-md-4 trigger-field" style="display:none;">
+                <label class="form-label">Trigger Price</label>
+                <input type="number" name="trigger_price" class="form-control" step="0.01">
+              </div>
+              
+
+              <div class="col-12">
+                <button type="submit" class="btn btn-success btn-lg w-100">🚀 Place Order</button>
+              </div>
+            </div>
+          </form>
+
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+              <div class="mt-4">
+                {% for category, message in messages %}
+                  <div class="alert alert-{{ category }} d-flex align-items-center" role="alert">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <div>{{ message }}</div>
+                  </div>
+                {% endfor %}
+              </div>
+            {% endif %}
+          {% endwith %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Open Orders -->
+    <div class="tab-pane fade" id="open-orders" role="tabpanel">
+      <div class="card mt-3 shadow-sm">
+        <div class="card-body" id="openOrdersContent">Loading open orders...</div>
+      </div>
+    </div>
+
+    <!-- Completed Orders -->
+    <div class="tab-pane fade" id="completed-orders" role="tabpanel">
+      <div class="card mt-3 shadow-sm">
+        <div class="card-body" id="completedOrdersContent">Loading completed orders...</div>
+      </div>
+    </div>
+
+    <!-- P&L -->
+    <div class="tab-pane fade" id="today-pnl" role="tabpanel">
+      <div class="card mt-3 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="mb-0">💰 Today's P&L</h5>
+            <button class="btn btn-outline-primary btn-sm" id="refreshPnlBtn">🔄 Refresh</button>
+          </div>
+          <div id="todayPnlContent">Loading today's P&L...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Current Positions -->
+<div class="tab-pane fade" id="positions" role="tabpanel">
+  <div class="card mt-3 shadow-sm">
+    <div class="card-body" id="positionsContent">Loading current positions...</div>
+  </div>
+</div>
+
+<!-- Dependencies -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+  let allSymbols = [];
+
+  function togglePriceFields(orderType) {
+    const price = document.querySelector(".price-field");
+    const trigger = document.querySelector(".trigger-field");
+    price.style.display = "none";
+    trigger.style.display = "none";
+
+    if (orderType === "LIMIT") price.style.display = "block";
+    else if (orderType === "SL") {
+      price.style.display = "block";
+      trigger.style.display = "block";
+    } else if (orderType === "SL-M") {
+      trigger.style.display = "block";
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", async () => {
+    togglePriceFields(document.querySelector("select[name='order_type']").value);
+
+    document.querySelectorAll('#tradeTabs button[data-bs-toggle="tab"]').forEach(tab => {
+      tab.addEventListener('shown.bs.tab', event => {
+        const id = event.target.getAttribute('data-bs-target');
+        if (id === '#open-orders') fetchTab('/api/open_orders', 'openOrdersContent');
+        if (id === '#completed-orders') fetchTab('/api/completed_orders', 'completedOrdersContent');
+        if (id === '#today-pnl') fetchTab('/api/today_pnl', 'todayPnlContent');
+        if (id === '#positions') fetchTab('/api/positions', 'positionsContent');
+
+      });
+    });
+    // ✅ Add this to trigger position sizing when SL price is entered/changed
+  const slInput = document.getElementById("slPriceInput");
+  if (slInput) {
+    slInput.addEventListener("input", fetchPositionSizing);
+    slInput.addEventListener("change", fetchPositionSizing);  // optional, for dropdown or paste use cases
+  }
+
+    document.getElementById('refreshPnlBtn')?.addEventListener('click', () => {
+      fetchTab('/api/today_pnl', 'todayPnlContent');
+    });
+
+    try {
+      const res = await fetch("/api/symbols");
+      const data = await res.json();
+      if (data.symbols) {
+        allSymbols = data.symbols.map(s => ({ id: s, text: s }));
+        $('#symbolInput').select2({
+          data: allSymbols,
+          placeholder: 'Search stock symbol',
+          width: '100%',
+          matcher: function(params, data) {
+            if (!params.term || params.term.trim() === '') return data;
+            const term = params.term.toLowerCase();
+            const text = data.text.toLowerCase();
+            return text.includes(term) ? data : null;
+          }
+        });
+
+        // LTP fetch on change
+        $('#symbolInput').on('change', async function () {
+          const symbol = $(this).val();
+          if (!symbol) return;
+          try {
+            const res = await fetch("/get_ltp", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ symbol })
+            });
+            const data = await res.json();
+            if (data.success) {
+              document.getElementById("ltpDisplay").textContent = `LTP: ₹${data.ltp}`;
+              latestLtp = data.ltp;  // <- Add this line
+              fetchPositionSizing();  // Trigger sizing after setting LTP
+            } else {
+              document.getElementById("ltpDisplay").textContent = `LTP: ${data.message}`;
+            }
+          } catch (err) {
+            document.getElementById("ltpDisplay").textContent = "LTP: Error fetching";
+            console.error("LTP fetch error", err);
+          }
+        });
+
+      }
+    } catch (err) {
+      console.error("Failed to load symbols", err);
+    }
+  });
+  
+  function exitPosition(symbol, action, qty) {
+    if (!confirm(`Are you sure you want to ${action} ${qty} of ${symbol}?`)) return;
+
+    fetch('/api/exit_position', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ symbol, action, qty })
+    })
+    .then(res => res.json())
+    .then(data => {
+      alert(data.message || 'Exit order placed');
+      // Refresh positions
+      fetchTab('/api/positions', 'positionsContent');
+    })
+    .catch(err => {
+      console.error('Exit order error:', err);
+      alert('Error placing exit order');
+    });
+  }
+  function customExit(symbol, action, maxQty) {
+  const qtyInput = document.getElementById(`exitQty-${symbol}`);
+  const typeInput = document.getElementById(`exitType-${symbol}`);
+  const priceInput = document.getElementById(`exitPrice-${symbol}`);
+
+  const qty = parseInt(qtyInput.value);
+  const orderType = typeInput.value;
+  
+  const price = parseFloat(priceInput.value);
+
+  if (!qty || qty <= 0 || qty > maxQty) {
+    alert("Enter a valid quantity");
+    return;
+  }
+
+  if ((orderType === "LIMIT" || orderType === "SL") && isNaN(price)) {
+    alert("Enter a valid price for Limit or SL order");
+    return;
+  }
+   let limit_price = 0;
+let trigger_price = 0;
+
+if (orderType === "MARKET") {
+    limit_price = 0;
+    trigger_price = 0;
+} else if (orderType === "SL") {
+    trigger_price = price;
+    limit_price = action === "BUY" ? price + 1 : price - 1;
+} else if (orderType === "LIMIT") {
+    limit_price = price;
+    trigger_price = 0;
+}
+
+const payload = {
+    symbol,
+    action,
+    qty,
+    order_type: orderType,
+    limit_price: limit_price,
+    trigger_price: trigger_price
+};
+
+  fetch('/api/exit_position_custom', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+  .then(res => res.json())
+  .then(data => {
+    alert(data.message || 'Exit order placed');
+    fetchTab('/api/positions', 'positionsContent');
+  })
+  .catch(err => {
+    console.error('Exit order error:', err);
+    alert('Error placing exit order');
+  });
+}
+
+
+  function fetchTab(url, targetId) {
+    fetch(url).then(r => r.json()).then(data => {
+      const el = document.getElementById(targetId);
+      if (!data.success) {
+        el.innerHTML = `<p class="text-danger">${data.message}</p>`;
+        return;
+      }
+
+      if (targetId === 'todayPnlContent') {
+        const p = data.pnl;
+        const colorClass = val => val > 0 ? 'text-success fw-bold' : val < 0 ? 'text-danger fw-bold' : 'text-muted';
+        el.innerHTML = `
+          <ul class="list-group list-group-flush">
+            <li class="list-group-item d-flex justify-content-between">
+              <span>Total P&L</span><span class="${colorClass(p.total_pnl)}">₹${p.total_pnl.toFixed(2)}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between">
+              <span>Realized P&L</span><span class="${colorClass(p.realized_pnl)}">₹${p.realized_pnl.toFixed(2)}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between">
+              <span>Unrealized P&L</span><span class="${colorClass(p.unrealized_pnl)}">₹${p.unrealized_pnl.toFixed(2)}</span>
+            </li>
+          </ul>`;
+      } else if (targetId === 'positionsContent') {
+  let html = `<table class="table table-hover table-bordered table-striped table-sm text-center align-middle">
+    <thead class="table-light"><tr>
+      <th>Type</th><th>Symbol</th><th>Qty</th><th>Avg Price</th><th>Unrealized P&L</th><th>Exit</th>
+    </tr></thead><tbody>`;
+
+  for (const p of data.positions) {
+    const isLong = p.positionType === 'LONG';
+    //const qty = isLong ? p.buyQty : p.sellQty;
+    const qty = Math.abs(isLong ? p.buyQty : p.sellQty); // Ensure it's positive
+    //const avg = isLong ? p.buyAvg : p.sellAvg;
+    const avg = isLong ? (p.buyAvg || 0) : (p.sellAvg || 0);
+    const pnlClass = p.unrealizedProfit >= 0 ? 'text-success' : 'text-danger';
+    const exitAction = isLong ? 'SELL' : 'BUY';
+    const symbol = p.tradingSymbol;
+
+    html += `<tr>
+      <td>${p.positionType}</td>
+      <td>${symbol}</td>
+      <td>${qty}</td>
+      <td>${avg.toFixed(2)}</td>
+      <td class="${pnlClass}">₹${p.unrealizedProfit.toFixed(2)}</td>
+      <td>
+  <div class="input-group input-group-sm">
+    <input type="number" class="form-control" id="exitQty-${symbol}" min="1" step="1" placeholder="Enter Qty" oninput="this.value = Math.abs(this.value)">
+    <select class="form-select" id="exitType-${symbol}">
+      <option value="MARKET">Market</option>
+      <option value="LIMIT">Limit</option>
+      <option value="SL">Stop Loss</option>
+    </select>
+    <input type="number" class="form-control" id="exitPrice-${symbol}" step="0.01" placeholder="Price">
+    <button class="btn btn-sm btn-outline-primary" onclick="customExit('${symbol}', '${exitAction}', ${qty})">Exit</button>
+  </div>
+</td>
+
+    </tr>`;
+  }
+
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+      else {
+        let html = `<table class="table table-hover table-bordered table-striped table-sm text-center align-middle">
+          <thead class="table-light"><tr>
+            <th>Order ID</th><th>Symbol</th><th>Type</th><th>Action</th>
+            <th>Qty</th><th>Price</th><th>Trigger</th><th>Status</th><th>Time</th>
+          </tr></thead><tbody>`;
+        for (const o of data.orders) {
+          const badge = o.status === 'TRADED' ? 'success' : 'secondary';
+          html += `<tr>
+            <td>${o.id}</td><td>${o.symbol}</td><td>${o.order_type}</td>
+            <td>${o.transaction_type}</td><td>${o.qty}</td>
+            <td>${o.price || '-'}</td><td>${o.trigger_price || '-'}</td>
+            <td><span class="badge bg-${badge}">${o.status}</span></td>
+            <td>${o.time}</td>
+          </tr>`;
+        }
+        html += '</tbody></table>';
+        el.innerHTML = html;
+      }
+    }).catch(() => {
+      document.getElementById(targetId).innerHTML = `<p class="text-danger">Error loading data.</p>`;
+    });
+  }
+  let latestLtp = 0;
+
+async function fetchPositionSizing() {
+  const symbol = $('#symbolInput').val();
+  const sl_price = parseFloat(document.getElementById("slPriceInput").value);
+  const productType = document.getElementById("producttype").value; // 👈 get product type
+
+  if (!symbol || isNaN(sl_price) || !latestLtp) return;
+
+  const payload = {
+    symbol: symbol,
+    entry: latestLtp,
+    sl_price: sl_price,
+    productType: productType // 👈 include in payload
+  };
+
+  try {
+    const res = await fetch('/api/position_sizing', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      $('#calculatedQty').val(data.quantity);
+      $('#positionDetails').html(`<small>💸 Expected Loss: ₹${data.expected_loss} | 📦 Exposure: ₹${data.exposure}| 💰 Fund: ₹${data.fund}| 🔁 Margin: ${data.leverage}x</small>`);
+    } else {
+      $('#positionDetails').html(`<small class="text-danger">${data.message}</small>`);
+    }
+  } catch (err) {
+    console.error("Error fetching position size", err);
+  }
+}
+
+//let latestLtp = 0; // 🔧 Store the latest LTP globally
+// 🔧 Function to update LTP externally
+function updateLTP(newLTP) {
+  latestLtp = parseFloat(newLTP);
+  console.log("🔄 Updated LTP:", latestLtp);
+  calculateManualExposure();
+}
+
+// 🔧 Main function to calculate exposure based on order type and quantity
+function calculateManualExposure() {
+  const qtyInputman = document.querySelector('input[name="qtyman"]');
+  const orderTypeInput = document.querySelector('select[name="order_type"]');
+  const limitPriceInput = document.querySelector('input[name="limit_price"]');
+  const triggerPriceInput = document.querySelector('input[name="trigger_price"]');
+
+  const qtyman = parseFloat(qtyInputman?.value || 0);
+  const orderType = orderTypeInput?.value;
+  const limitPrice = parseFloat(limitPriceInput?.value || 0);
+  const triggerPrice = parseFloat(triggerPriceInput?.value || 0);
+
+  console.log("🧾 Qty:", qtyman);
+  console.log("📋 Order Type:", orderType);
+  console.log("💰 Limit Price:", limitPrice);
+  console.log("🚨 Trigger Price:", triggerPrice);
+
+  if (!qtyman || !orderType) {
+    console.warn("⚠️ Missing quantity or order type.");
+    return;
+  }
+
+  let price = 0;
+
+  // 🔧 Determine price based on order type
+  if (orderType === "MARKET") {
+    price = latestLtp;
+    console.log("📈 Price (MARKET):", price);
+  } else if (orderType === "LIMIT") {
+    price = limitPrice;
+    console.log("📈 Price (LIMIT):", price);
+  } else if (orderType === "SL" || orderType === "SL-M") {
+    price = triggerPrice;
+    console.log("📈 Price (SL/SL-M):", price);
+  }
+
+  if (!price) {
+    console.warn("⚠️ Price is invalid or zero.");
+    return;
+  }
+
+  const exposure = price * qtyman;
+  console.log("🧮 Calculated Exposure: ₹", exposure);
+
+  // 🔧 Update exposure display
+  $('#positionDetailsqty').html(
+    `<br><small id="manualExposure" class="text-info">📌 Manual Exposure: ₹${exposure.toLocaleString('en-IN')}</small>`
+  );
+}
+
+// 🔧 Event Listeners — call calculateManualExposure on changes
+document.addEventListener('DOMContentLoaded', function () {
+  ['qty', 'limit_price', 'trigger_price'].forEach(name => {
+    const input = document.querySelector(`input[name="${name}"]`);
+    if (input) {
+      input.addEventListener("input", calculateManualExposure);
+    }
+  });
+
+  const orderTypeSelect = document.querySelector('select[name="order_type"]');
+  if (orderTypeSelect) {
+    orderTypeSelect.addEventListener("change", calculateManualExposure);
+  }
+});
+
+
+</script>
+{% endblock %}
+

@@ -1,6 +1,6 @@
 import os
 import logging
-from flask import Flask, render_template, request, jsonify, session, g, redirect, url_for,flash
+from flask import Flask, render_template, request, jsonify, session, g, redirect, url_for
 from werkzeug.middleware.proxy_fix import ProxyFix
 from authlib.integrations.flask_client import OAuth
 from authlib.common.security import generate_token
@@ -35,12 +35,7 @@ from core_logic import (
     get_cached_security_id,
     calculate_position_size_mixed,
     build_mapping_caches,
-    place_order,
-    get_all_symbols,
-    get_ltp,
-    fetch_positions,
-    fetch_orders
-
+    place_order
 )
 
 # ===========================
@@ -94,14 +89,13 @@ UI_PAGES = [
     {"route": "/home", "name": "Home"},
     {"route": "/tradingview/chart", "name": "TradingView Chart"},
     {"route": "/momentum_watchlist", "name": "Momentum Watchlist"},
-    {"route": "/admin/ui-management", "name": "Admin Management"},
-    {"route": "/trade", "name": "Trade"}
+    {"route": "/admin/ui-management", "name": "Admin Management"}
 ]
 
 ROLE_UI_ACCESS = {
     "viewer": ["/home", "/tradingview/chart"],
-    "trader": ["/home", "/tradingview/chart", "/momentum_watchlist", "/trade"],
-    "admin": ["/home", "/tradingview/chart", "/momentum_watchlist", "/admin/ui-management", "/trade"]
+    "trader": ["/home", "/tradingview/chart", "/momentum_watchlist"],
+    "admin": ["/home", "/tradingview/chart", "/momentum_watchlist", "/admin/ui-management"]
 }
 
 def get_user_role(user_info):
@@ -434,131 +428,6 @@ def dynamic_page(page_name):
     if not page_entry:
         return "Page not found", 404
     return render_template("dynamic_page.html", page=page_entry["name"], pages=g.ui_pages, role=g.role, user=g.user)
-
-
-@app.route('/trade')
-@require_role(["trader", "admin"])
-def trade_ui():
-    return render_template('trade.html', pages=g.ui_pages, role=g.role, user=g.user)
-
-# ===========================
-# PI Endpoints
-# ===========================
-
-# 🔹 Symbols
-@app.route('/api/symbols', methods=['GET'])
-@require_role(["trader", "admin"])
-def api_symbols():
-    symbols = get_all_symbols()
-    return jsonify({
-        "symbols": symbols,
-        "success": True
-    })
-
-# 🔹 Market Data
-@app.route('/get_ltp', methods=['POST'])
-@require_role(["trader", "admin"])
-def api_get_ltp():
-    data = request.get_json()
-    symbol = data.get("symbol", "").strip().upper()
-    if not symbol:
-        return json_response(success=False, message="Missing symbol"), 400
-    ltp = get_ltp(symbol)
-    return json_response(symbol=symbol, ltp=ltp)
-
-# 🔹 Orders
-@app.route('/trade', methods=['GET', 'POST'])
-@require_role(["trader", "admin"])
-def trade():
-    if request.method == 'POST':
-        # Log raw form data
-        logger.debug(f"Trade POST data: {request.form}")
-        data = request.form.to_dict()
-        symbol = data.get("symbol", "").strip().upper()
-        action = data.get("transaction_type", "").upper() or data.get("action", "").upper()
-        qty = int(data.get("qty", 0))
-        price = float(data.get("limit_price") or 0)
-        productType = data.get("productType", "INTRADAY").upper()
-        order_type = data.get("order_type", "LIMIT").upper()
-        trigger_price = float(data.get("trigger_price") or 0)
-
-        logger.debug(f"Normalized trade data -> symbol: {symbol}, action: {action}, qty: {qty}, price: {price}, productType: {productType}, order_type: {order_type}, trigger_price: {trigger_price}")
-
-        try:
-            # Place order using core function
-            result = place_order(symbol, action, qty, price, productType, order_type, trigger_price)
-            if result.get("success"):
-                flash(f"✅ Order Placed Successfully! Order ID: {result.get('order_id')}", "success")
-            else:
-                flash(f"❌ Order Placement Failed: {result.get('message')}", "danger")
-        except Exception as e:
-            logger.error(f"Order failed: {e}", exc_info=True)
-            flash(f"❌ Order Failed: {str(e)}", "danger")
-
-        # Redirect back to GET /trade so UI can show flash messages
-        return redirect(url_for('trade'))
-
-    # GET request -> fetch current orders for dashboard
-    open_orders, completed_orders = fetch_orders_from_dhan()
-    return render_template("trade.html", open_orders=open_orders, completed_orders=completed_orders)
-
-@app.route('/api/open_orders', methods=['GET'])
-@require_role(["trader", "admin"])
-def api_open_orders():
-    open_orders, _ = fetch_orders()
-    return json_response(**{"orders": open_orders})
-
-@app.route('/api/completed_orders', methods=['GET'])
-@require_role(["trader", "admin"])
-def api_completed_orders():
-    _, completed_orders = fetch_orders()
-    return json_response(**{"orders": completed_orders})
-
-
-
-@app.route('/api/positions', methods=['GET'])
-@require_role(["trader", "admin"])
-def api_positions():
-    positions = fetch_positions()
-    return json_response(success=True, positions=positions)
-
-@app.route('/api/exit_position', methods=['POST'])
-@require_role(["trader", "admin"])
-def api_exit_position():
-    data = request.get_json()
-    symbol = data.get("symbol", "").strip().upper()
-    if not symbol:
-        return json_response(success=False, message="Missing symbol"), 400
-
-    open_orders, _ = fetch_orders()
-    # exit opposite action at market
-    order_to_exit = next((o for o in open_orders if o["symbol"] == symbol), None)
-    if not order_to_exit:
-        return json_response(success=False, message=f"No open position for {symbol}"), 404
-
-    action = "SELL" if order_to_exit["transaction_type"] == "BUY" else "BUY"
-    qty = order_to_exit["qty"]
-    price = get_ltp(symbol)
-    result = place_order(symbol, action, qty, price, productType="INTRADAY", order_type="MARKET")
-    return json_response(**result)
-
-@app.route('/api/exit_position_custom', methods=['POST'])
-@require_role(["trader", "admin"])
-def api_exit_position_custom():
-    data = request.get_json()
-    symbol = data.get("symbol", "").strip().upper()
-    action = data.get("action", "").upper()
-    qty = int(data.get("qty", 0))
-    price = float(data.get("price", 0))
-    order_type = data.get("order_type", "LIMIT").upper()
-    productType = data.get("productType", "INTRADAY").upper()
-    trigger_price = float(data.get("trigger_price", 0))
-
-    if not symbol or action not in ["BUY", "SELL"] or qty <= 0 or price <= 0:
-        return json_response(success=False, message="Invalid input"), 400
-
-    result = place_order(symbol, action, qty, price, productType, order_type, trigger_price)
-    return json_response(**result)
 
 # ===========================
 # Run App
