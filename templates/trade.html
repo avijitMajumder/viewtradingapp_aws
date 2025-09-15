@@ -372,7 +372,7 @@ const payload = {
     const avg = isLong ? (p.buyAvg || 0) : (p.sellAvg || 0);
     const pnlClass = p.unrealizedProfit >= 0 ? 'text-success' : 'text-danger';
     const exitAction = isLong ? 'SELL' : 'BUY';
-    const symbol = p.tradingSymbol;
+    const symbol = p.symbol;
 
     html += `<tr>
       <td>${p.positionType}</td>

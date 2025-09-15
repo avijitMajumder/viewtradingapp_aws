@@ -549,12 +549,12 @@ def api_exit_position_custom():
     symbol = data.get("symbol", "").strip().upper()
     action = data.get("action", "").upper()
     qty = int(data.get("qty", 0))
-    price = float(data.get("price", 0))
+    price = float(data.get("limit_price", 0))
     order_type = data.get("order_type", "LIMIT").upper()
     productType = data.get("productType", "INTRADAY").upper()
     trigger_price = float(data.get("trigger_price", 0))
 
-    if not symbol or action not in ["BUY", "SELL"] or qty <= 0 or price <= 0:
+    if not symbol or action not in ["BUY", "SELL"] or qty <= 0 :
         return json_response(success=False, message="Invalid input"), 400
 
     result = place_order(symbol, action, qty, price, productType, order_type, trigger_price)
